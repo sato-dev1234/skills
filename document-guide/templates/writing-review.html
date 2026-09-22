@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文キャンセルの表示と設定反映の文章レビュー</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .review-note { font-size:12.5px; color:var(--ink-2); }
+  pre.tree { background:var(--surface); border:1px solid var(--line); white-space:pre-wrap; overflow-wrap:anywhere; }
+  pre.tree .mark { color:var(--warn); }
+  blockquote { margin:0 0 16px; padding:14px 20px; border-left:3px solid var(--accent); background:var(--surface); }
+  blockquote h4 { font-family:var(--font-heading); font-size:15px; margin:0 0 10px; }
+  blockquote p:last-child, blockquote .table-wrap:last-child { margin-bottom:0; }
+  blockquote table { background:var(--paper); }
+  td.src { white-space:nowrap; font-family:var(--font-mono); font-size:12px; color:var(--ink-2); }
+  td.mark { color:var(--warn); }
+  .detail-page-overview > h2 { margin-top:28px; }
+  @media print { blockquote, pre.tree { break-inside:avoid; -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style>
+</head>
+<body>
+<div class="doc"><div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="対象の話題">
+<p class="detail-page-navigation-label">目次</p>
+<button id="detail-label-overview" type="button" class="detail-page-navigation-item" aria-controls="detail-overview" aria-current="true">概要</button>
+<button id="detail-label-1" type="button" class="detail-page-navigation-item" aria-controls="detail-1" aria-current="false">注文詳細画面</button>
+<button id="detail-label-2" type="button" class="detail-page-navigation-item" aria-controls="detail-2" aria-current="false">設定値の反映</button>
+</nav>
+<main class="detail-page-content">
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+<div class="detail-page-hero">
+  <p class="eyebrow">文章レビュー</p>
+  <h1>注文キャンセルの表示と設定反映</h1>
+</div>
+<!-- 書き手へ: 対象と規則、結果、話題と原文の対応を概要に置く。言葉を修正した場合は、読み手の前提と修正の理由も示す。
+受け取った原文・ツリー・書き直した文章の対応を保つ。この見本で別の分類規則を適用しない。
+内容が事実やコードに合うかは対象資料のレビューへ委ねる。レビューだけの依頼では対象の原文を変更しない。 -->
+<h2>対象と規則</h2>
+<p>対象は、注文キャンセルの要件メモから、注文詳細画面の表示と期間の設定値の反映を述べる8文です。原文と書き直しは、この資料の各話題に示します。位置は元のメモの段落と文を示しています。</p>
+<p>「原文からツリーを作り、文章を書く」の「主張を分解する」「話題と順序」「読み手の前提を記録する」「言葉を決める」「対応・列挙・通常の説明の区別」「出力単位と共通部分」「意味を保持する」「照合」を使っています。</p>
+<h2>結果</h2>
+<ul>
+<li>注文詳細画面は、条件を行、キャンセルボタンと案内を列にして表示内容を示しています。各条件は独立して適用し、原文にない案内の表示は補っていません。</li>
+<li>短縮・延長による表示差は、適用する注文の条件が原文にないため、未解決として残しています。その他の取得・保持・反映の説明を書き直しています。</li>
+<li>設定が反映される時の違いへの注意を、読み手への指示として残しています。</li>
+</ul>
+<h2>話題と原文の対応</h2>
+<div class="table-wrap"><table><thead><tr><th class="table-description">話題</th><th class="table-label">原文位置</th><th class="table-description">内容</th></tr></thead><tbody>
+<tr><th scope="row" class="table-description">注文詳細画面</th><td class="table-label">1-4、2-6</td><td class="table-description">期限を過ぎた注文と出荷済みの注文の表示</td></tr>
+<tr><th scope="row" class="table-description">期間の設定値を反映するとき</th><td class="table-label">2-1、4-1〜4-5</td><td class="table-description">取得、保持、変更と反映、読み手への注意</td></tr>
+</tbody></table></div>
+<h2>言葉の修正</h2>
+<p>この要件メモは、注文、出荷、決済、設定変更と画面操作を理解する読み手に、設定と操作結果を説明しています。画面とサーバーの設定値が一致するかは具体的に説明でき、情報科学の専門知識を前提にする必要はありません。</p>
+<!-- 書き手へ: 言葉の変更は、修正前、指すもの、修正後、前提に照らした理由を示す。通常の生成に2本のツリーや全単語表を要求しない。 -->
+<div class="table-wrap"><table><thead><tr><th class="table-description">修正前</th><th class="table-description">指すもの</th><th class="table-description">修正後</th><th class="table-description">理由</th></tr></thead><tbody>
+<tr><td class="table-description">ボタン、キャンセルボタン</td><td class="table-description">キャンセルを要求する画面の操作部品</td><td class="table-description">キャンセルボタン</td><td class="table-description">同じ操作部品を指すため、画面での役割が分かる呼び方に揃える</td></tr>
+<tr><td class="table-description">即時的な整合性は保証されない</td><td class="table-description">設定値がすぐ一致する保証がない</td><td class="table-description">期間の設定値がすぐに一致することは保証されない</td><td class="table-description">操作結果の理解に専門的な呼び方は不要であり、設定値の一致として説明できる</td></tr>
+</tbody></table></div>
+<h2 id="review-tree">原文8文を整理したツリー</h2>
+<pre class="tree"><code>節：注文キャンセルの表示と設定反映
+├─ 読み手の前提
+│  ├─ 扱う分野：注文キャンセルの要件
+│  ├─ 必要な知識：注文、出荷、決済、設定変更と画面操作が分かる
+│  └─ 根拠：契約先の設定と利用者の操作結果を説明している @1-3,1-4,4-3
+├─ 節：注文詳細画面
+│  └─ まとまり
+│     ├─ 共通
+│     │  ├─ 場面：場所＝注文詳細画面 @1-4
+│     │  └─ 主体：画面 @1-4,2-6
+│     └─ 対応：条件別の表示
+│        ├─ 行の見出し：注文の条件
+│        ├─ 列の見出し：キャンセルボタン、案内
+│        ├─ 条件の扱い：それぞれ独立して適用
+│        ├─ 行
+│        │  ├─ 条件
+│        │  │  ├─ 判定対象：注文
+│        │  │  └─ 判定：期限を過ぎている
+│        │  ├─ 列：キャンセルボタン
+│        │  │  └─ 項目（説明） @1-4
+│        │  │     ├─ 対象：キャンセルボタン
+│        │  │     └─ 動作：表示しない
+│        │  └─ 列：案内
+│        │     └─ 項目（説明） @1-4
+│        │        ├─ 対象：案内
+│        │        ├─ 動作：表示する
+│        │        └─ 内容：「キャンセル期限を過ぎています」
+│        └─ 行
+│           ├─ 条件
+│           │  ├─ 判定対象：注文
+│           │  └─ 判定：出荷済みである
+│           ├─ 列：キャンセルボタン
+│           │  └─ 項目（説明） @2-6
+│           │     ├─ 対象：キャンセルボタン
+│           │     ├─ 動作：表示しない
+│           │     └─ 変更の有無：これまでどおり
+│           └─ 列：案内／記載なし
+└─ 節：期間の設定値を反映するとき
+   ├─ まとまり
+   │  ├─ 共通
+   │  │  └─ 主体：画面
+   │  ├─ 項目（説明） @2-1
+   │  │  ├─ 場面：時点＝サインイン直後
+   │  │  ├─ 対象：期間の設定値
+   │  │  ├─ 動作：受け取る
+   │  │  └─ 回数：1度だけ
+   │  ├─ 項目（説明） @2-1
+   │  │  ├─ 対象：受け取った期間の設定値
+   │  │  └─ 動作：保持する
+   │  └─ 項目（説明） @4-1
+   │     ├─ 条件
+   │     │  ├─ 判定対象：管理者
+   │     │  └─ 判定：期間を変更した場合も
+   │     ├─ 場面：時点＝サインイン中
+   │     ├─ 対象：変更前の期間の設定値
+   │     └─ 動作：保持する
+   ├─ 項目（説明） @4-2
+   │  ├─ 対象：画面とサーバーの期間の設定値
+   │  ├─ 状態：すぐに一致することは保証されない
+   │  └─ 理由
+   │     └─ 項目（説明） @4-2
+   │        ├─ 主体：サーバー
+   │        ├─ 対象：変更後の期間の設定値
+   │        ├─ 動作：すぐ使う
+   │        └─ 用途：期間内かの判定
+   ├─ まとまり
+   │  ├─ 共通
+   │  │  └─ 場面：時点＝サインインし直すまで @4-1,4-4
+   │  └─ 対応：原文にある期間の変更と事象（適用条件は未解決）
+   │     ├─ 行の見出し：期間の変更
+   │     ├─ 列の見出し：原文が述べる事象
+   │     ├─ 行
+   │     │  ├─ 条件
+   │     │  │  ├─ 判定対象：期間の変更
+   │     │  │  └─ 判定：短縮した直後
+   │     │  └─ 列：原文が述べる事象
+   │     │     └─ 項目（説明） @4-3
+   │     │        ├─ 条件
+   │     │        │  ├─ 判定対象：キャンセルボタン
+   │     │        │  └─ 判定：表示されているにもかかわらず
+   │     │        ├─ 対象：ボタンを押して送ったキャンセル要求
+   │     │        └─ 状態：拒否される
+   │     └─ 行
+   │        ├─ 条件
+   │        │  ├─ 判定対象：期間の変更
+   │        │  └─ 判定：延長した直後
+   │        └─ 列：原文が述べる事象
+   │           └─ 項目（説明） @4-3
+   │              ├─ 条件
+   │              │  ├─ 判定対象：注文
+   │              │  └─ 判定：キャンセルできるにもかかわらず
+   │              ├─ 対象：キャンセルボタン
+   │              └─ 状態：表示されない
+   ├─ 未解決 @4-3
+   │  ├─ 不足：短縮・延長による表示差が生じる注文の条件
+   │  ├─ 確認する内容：変更前後の期間内外と出荷状態
+   │  └─ 扱い：原文の事象は保持し、適用条件を推測で補わず完成文への反映を保留
+   ├─ 項目（説明） @4-4
+   │  ├─ 場面：時点＝サインインし直した後
+   │  ├─ 主体：画面
+   │  ├─ 対象：変更後の期間の設定値
+   │  └─ 動作：反映する
+   └─ 項目（指示） @4-5
+      ├─ 主体：読み手
+      ├─ 対象：設定が反映される時の違い
+      └─ 動作：注意する</code></pre>
+</header>
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+<h2 id="topic-1">注文詳細画面</h2>
+<!-- 書き手へ: 第1階層は対象文の段落ではなく、組んだツリーの話題で切る。話題ごとに原文、ツリー、書き直した文章を対応させる。
+原文は句読点も変えずに引用する。原文位置ごとに項目・理由・保持・重複の行き先を示す。
+出力の列はツリーから決まった形を記録する欄であり、書き手が文や表を選ぶ欄ではない。 -->
+<h3>原文</h3>
+<div class="table-wrap"><table><thead><tr><th class="table-label">位置</th><th class="table-description">原文</th><th class="table-description">ツリーとの対応</th><th class="table-description">出力</th></tr></thead><tbody>
+<tr><td class="src table-label">1-4</td><td class="table-description">注文詳細画面では、期間を過ぎた注文に対するキャンセルボタンの非表示化と、「キャンセル期限を過ぎています」という案内の表示を行います。</td><td class="table-description">表示対象と動作を分け、期限の条件を行に共有する</td><td class="table-description">同じ行のボタンと案内のセル</td></tr>
+<tr><td class="src table-label">2-6</td><td class="table-description">なお、出荷済みの注文には、従来と同じくキャンセルボタンを表示しません。</td><td class="table-description">出荷済みの条件を行にし、従来どおりの表示をボタンのセルに保つ</td><td class="table-description">出荷済みの行。案内は記載なし</td></tr>
+</tbody></table></div>
+<h3>ツリーとの対応</h3>
+<p><a href="#review-tree">共通のツリー</a>の「注文詳細画面」に対応します。</p>
+<h3>書き直した文章</h3>
+<blockquote><h4>注文詳細画面</h4>
+<p>注文詳細画面の表示は次のとおりです。出荷済みでも、期限を過ぎた注文には期限切れの案内を表示します。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-description">注文の条件</th><th class="table-description">キャンセルボタン</th><th class="table-description">案内</th></tr></thead><tbody><tr><td class="table-description">期限を過ぎている</td><td class="table-description">表示しない</td><td class="table-description">「キャンセル期限を過ぎています」と表示する</td></tr><tr><td class="table-description">出荷済みである</td><td class="table-description">これまでどおり表示しない</td><td class="table-description">記載なし</td></tr></tbody></table></div>
+</blockquote>
+</section>
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+<h2 id="topic-2">期間の設定値を反映するとき</h2>
+<h3>原文</h3>
+<div class="table-wrap"><table><thead><tr><th class="table-label">位置</th><th class="table-description">原文</th><th class="table-description">ツリーとの対応</th><th class="table-description">出力</th></tr></thead><tbody>
+<tr><td class="src table-label">2-1</td><td class="table-description">期間の設定値はサインイン直後に1度だけ取得され、画面側での保持が行われます。</td><td class="table-description">主体・対象・取得時点・回数を分け、取得と保持を2項目にする</td><td class="table-description">段落</td></tr>
+<tr><td class="src table-label">4-1</td><td class="table-description">管理者による期間の変更があっても、サインイン中の画面には変更前の値が保持されます。</td><td class="table-description">主体は画面として共有し、変更の条件とサインイン中の場面を項目に保つ</td><td class="table-description">段落</td></tr>
+<tr><td class="src table-label">4-2</td><td class="table-description">サーバーの判定には変更後の値がすぐ反映されるため、画面とサーバーの即時的な整合性は保証されません。</td><td class="table-description">すぐ一致する保証がないという主張と、その理由</td><td class="table-description">同じ段落の2文</td></tr>
+<tr><td class="src table-label">4-3</td><td class="table-description">この差異は、期間の短縮の直後においては、ボタンが表示されているにもかかわらず要求が拒否される事象として、期間の延長の直後においては、キャンセル可能な注文にボタンが表示されない事象として現れます。</td><td class="table-description">原文にある短縮・延長の事象を保持し、適用する注文条件を未解決にする</td><td class="table-description">完成文への反映を保留。確認事項の表</td></tr>
+<tr><td class="src table-label">4-4</td><td class="table-description">サインインし直すと画面にも変更後の期間が反映されます。</td><td class="table-description">変更後の値を反映する項目。表の範囲の根拠でもある</td><td class="table-description">段落</td></tr>
+<tr><td class="src table-label">4-5</td><td class="table-description">このように設定の反映時点が異なる点には注意が必要です。</td><td class="table-description">読み手への注意を指示として残す</td><td class="table-description">1文の段落</td></tr>
+</tbody></table></div>
+<h3>ツリーとの対応</h3>
+<p><a href="#review-tree">共通のツリー</a>の「期間の設定値を反映するとき」に対応します。</p>
+<!-- 書き手へ: 受け取った書き直しを、意味と出力の形を保って組み込む。「読み手の前提」は書き直した本文には出さない。原文に戻って内容や形式を選び直さない。
+組み込んだ原文・ツリー・文章が、受け取った内容と一致することを確認する。対象の原文へ反映するのは、利用者が依頼した場合だけである。 -->
+<h3>適用条件の確認が必要な箇所</h3>
+<p>原文4-3は、サインインし直すまでに次の表示差が生じると述べています。ただし、対象となる注文の条件がありません。変更前後の期間内外と出荷状態を確認するまで、以下を一般的な挙動として完成文へ入れることは保留します。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-label">期間の変更</th><th class="table-description">原文が述べる事象</th><th class="table-description">不足する情報</th></tr></thead><tbody>
+<tr><td class="table-label">短縮した直後</td><td class="table-description">ボタンが表示されているにもかかわらず、要求が拒否される</td><td class="table-description">この差が生じる注文の条件</td></tr>
+<tr><td class="table-label">延長した直後</td><td class="table-description">キャンセル可能な注文にボタンが表示されない</td><td class="table-description">この差が生じる注文の条件</td></tr>
+</tbody></table></div>
+<h3>書き直した文章（4-3は保留）</h3>
+<blockquote><h4>期間の設定値を反映するとき</h4>
+<p>画面は、サインイン直後に1度だけ期間の設定値を受け取ります。受け取った期間の設定値を保持します。管理者が期間を変更した場合も、サインイン中は変更前の期間の設定値を保持します。</p>
+<p>画面とサーバーの期間の設定値が、すぐに一致することは保証されません。サーバーが、期間内かの判定に変更後の期間の設定値をすぐ使うためです。</p>
+<p>画面は、サインインし直した後、変更後の期間の設定値を反映します。</p>
+<p>画面とサーバーで設定が反映される時の違いに注意してください。</p>
+</blockquote>
+</section>
+</main></div></div>
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>

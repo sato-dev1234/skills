@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文のキャンセル期限の実装結果</title>
+<link rel="stylesheet" href="common.css">
+<style>
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 0 0 24px;
+}
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px 14px;
+}
+.summary-card .label {
+  display: block;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.summary-card b { display: block; margin-top: 2px; }
+.summary-card small { display: block; color: var(--ink-2); margin-top: 2px; }
+.status {
+  display: inline-block;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+.status.attention { border-color: var(--warn); color: var(--warn); }
+.decision-list { display: grid; gap: 12px; margin: 0 0 20px; }
+.decision-item {
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+}
+.decision-item h3 { margin: 0 0 4px; }
+.decision-item p:last-child { margin-bottom: 0; }
+.evidence { color: var(--ink-3); font-family: var(--font-mono); font-size: 12px; }
+@media (max-width: 760px) {
+  .summary-grid { grid-template-columns: 1fr; }
+}
+</style>
+<script src="flow.js" defer></script>
+</head>
+<body>
+<div class="doc">
+<div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="実装結果の詳細">
+  <p class="detail-page-navigation-label">実装資料</p>
+  <button id="detail-label-overview" class="detail-page-navigation-item" type="button" aria-current="true" aria-controls="detail-overview">概要</button>
+  <button id="detail-label-1" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-1"><span class="detail-page-navigation-number">01</span><span>採用した設計と設計との差</span></button>
+  <button id="detail-label-2" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-2"><span class="detail-page-navigation-number">02</span><span>コードレビュー・自動テストの要約</span></button>
+  <button id="detail-label-3" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-3"><span class="detail-page-navigation-number">03</span><span>受け入れ判断に影響する残件</span></button>
+  <button id="detail-label-4" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-4"><span class="detail-page-navigation-number">参考</span><span>採用しなかった案</span></button>
+</nav>
+
+<main class="detail-page-content">
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+  <div class="detail-page-hero">
+    <p class="eyebrow">受注管理 › 注文キャンセル › 実装結果</p>
+    <h1>キャンセルできる期間を追加し、設計どおり既存の返金処理を維持した</h1>
+    <p class="sub">注文詳細画面は、契約先ごとに設定した期間に応じてキャンセルボタンを表示する。設定変更直後には、変更前の期間で表示されることがある。サーバーは最新設定で判定し、期間を過ぎた注文のキャンセル要求を拒否する。期間を設定していない契約先での動作は変わらない。返金処理は、キャンセル後も変わらない。</p>
+  </div>
+
+  <!-- 書き手へ: 状況カードは、受け入れ判断に要る4点（実装、設計との関係、内部確認、残る範囲）を示す。状況カードは、項目を保つ。書き手は、値を現在の実装と確認状況で置き換える。実装中から使い、レビュー・検証後に最終更新する。未完了の実装や未実施の確認は、その状態を記録し、完成例の値を流用しない。読み手が受け入れの判断材料を最初に得るためである。 -->
+  <div class="summary-grid">
+    <div class="summary-card"><span class="label">実装</span><b><span class="status">完了</span></b><small>画面、API、契約先設定</small></div>
+    <div class="summary-card"><span class="label">設計との関係</span><b>主要方針を維持</b><small>内部配置に1件の差異</small></div>
+    <div class="summary-card"><span class="label">内部確認</span><b>確認済み</b><small>コードレビューと自動テスト</small></div>
+    <div class="summary-card"><span class="label">残る範囲</span><b><span class="status attention">既知 1件</span></b><small>設定変更直後の表示差</small></div>
+  </div>
+
+  <figure class="diagram">
+  <div class="diagram-legend"><span class="changed">今回の成果</span><span class="existing">判断の根拠</span><span class="excluded">残る範囲</span></div>
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>確定した要件</b><span class="body">期間なしは従来どおり、最終判定はサーバー、返金処理は変更しない</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>承認された設計</b><span class="body">設定の取得、画面表示、サーバーの判定を変更する</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>画面とAPIを変更</b><span class="change">期間に応じてボタンを表示し、最新設定で受付を判断</span></div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-4" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>コードレビューと自動テスト</b><span class="body">実装の妥当性と、設計の主要な期待結果を確認</span></div>
+          <div class="diagram-node" data-node="node-5" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>設計との差</b><span class="body">共通判定の配置だけを変更</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-6" data-kind="end" data-state="existing"><div class="diagram-meta"><span class="diagram-role">終了</span></div><b>実装完了</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="control" data-role="sequence"><span>設計へ反映</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="control" data-role="sequence"><span>実装へ反映</span></span>
+        <span data-from="node-4" data-to="node-5" data-kind="call" data-role="reference"><span>判断を残す</span></span>
+        <span data-from="node-3" data-to="node-4" data-kind="control" data-role="sequence"><span>内部で確認</span></span>
+        <span data-from="node-4" data-to="node-6" data-kind="control" data-role="sequence"><span>結果を確認</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>図1. 確定した要件と承認された設計を実装し、内部確認を終えるまでのつながり</figcaption>
+</figure>
+
+  <div class="key"><p><b>採用した方針:</b> 期間を設定していない契約先での動作は、従来と変わらない。サーバーは、画面の表示だけに頼らず、キャンセル受付時に期間を確認する。受付後の返金の記録と返金の依頼には、既存の処理を使う。</p></div>
+  <div class="caution"><p><b>確認してほしい点:</b> 画面は、設定変更の直後も、サインイン中の利用者には変更前の期間でボタンを表示することがある。この表示差への追加対応は、今回の完了条件に含めない。</p></div>
+  <p class="code-ref">要件資料: refinement.html　設計資料: design.html　対象差分: feature/cancel-window　確認時点: 実装・コードレビュー・自動テストの完了後</p>
+</header>
+
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+  <h2>採用した設計と設計との差</h2>
+
+  <div class="decision-list">
+    <article class="decision-item">
+      <h3>期間を設定した契約先だけに適用する</h3>
+      <p>注文は、未設定の契約先では従来どおり出荷前ならいつでもキャンセルできる。契約先が、既存の操作を予告なく制限されないためである。</p>
+      <p class="evidence">実装: contract.cancelWindowDays / OrderCancellationPolicy</p>
+    </article>
+    <article class="decision-item">
+      <h3>キャンセルできるかはサーバーが最終判断する</h3>
+      <p>画面は、操作が分かりやすくなるようにボタンを表示し、権限や期間を保証しない。サーバーは、注文状態、注文日時、契約先の最新設定を読み、保存前に改めて判断する。</p>
+      <p class="evidence">実装: CancelOrderHandler / OrderCancellationPolicy</p>
+    </article>
+    <article class="decision-item">
+      <h3>返金処理は既存の流れを変えない</h3>
+      <p>サーバーは、既存のキャンセル処理より前に期間を確認する。サーバーは、受付後に従来の注文更新、返金の記録、操作履歴、返金の依頼を使う。決済処理は、期間を入れる変更とは分けて、今回は変えないためである。</p>
+      <p class="evidence">実装: CancelOrderHandler / RefundRequestWriter</p>
+    </article>
+  </div>
+
+  <h3>設計との差</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="table-description">設計時</th><th class="table-description">完成した実装</th><th class="table-description">変更した理由</th><th class="table-description">利用者への影響</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="table-description">注文のモデルへ期間を判定する処理を追加する想定</td>
+          <td class="table-description"><code>OrderCancellationPolicy</code>が契約先設定と注文を受け取って判定する</td>
+          <td class="table-description">注文は単体では契約先の期間を持たず、モデルへ設定を読む処理を持ち込むと、既存の受け持つ範囲が広がるためである</td>
+          <td class="table-description">利用者に変わることはなく、画面とサーバーの結果は設計どおりである</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="key"><p>設計の目的は変えず、期間を判定する処理を<code>OrderCancellationPolicy</code>に配置した。この配置を選んだ理由は次のとおりである。</p><ul><li>判定処理を画面とサーバーから共用できる。</li><li>既存の注文モデルと返金処理を変更せずに済む。</li></ul></div>
+</section>
+
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+  <!-- 書き手へ: 節は、コードレビューと自動テストの結論と詳細資料への参照に留まる。書き手は、指摘やテストの内容を再掲しない。資料が受け入れ判断に集中するためである。詳細は、役割に合う別の資料が担う。 -->
+  <h2>コードレビュー・自動テストの要約</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="table-label">内部確認</th><th class="table-description">結論</th><th class="table-label">詳細資料</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="k table-label">コードレビュー</td>
+          <td class="table-description">
+            <p>コードレビューの結果、実装には次の問題が残っていない。</p>
+            <ul>
+              <li>設計の目的を損なう問題</li>
+              <li>受け入れを妨げる問題</li>
+            </ul>
+            <p>実装中に見つかった指摘への対応は、修正後のコードで確認済みである。</p>
+          </td>
+          <td class="table-label"><a href="code-review.html"><code>code-review.html</code></a></td>
+        </tr>
+        <tr>
+          <td class="k table-label">自動テスト</td>
+          <td class="table-description">自動テストは、期間内、期間超過、未設定時の動作と、既存の返金処理が変わらないことを確認し、失敗しているものはない。</td>
+          <td class="table-label"><a href="coverage.html"><code>coverage.html</code></a><br><a href="test-review.html"><code>test-review.html</code></a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="detail-3" class="detail-page-panel" aria-labelledby="detail-label-3" hidden>
+  <h2>受け入れ判断に影響する残件</h2>
+
+  <div class="caution"><p><b>設定変更直後の表示差:</b> 管理者が期間を変えた直後は、キャンセルボタンの表示とサーバーの判定結果が食い違うことがある。画面が、サインイン中は変更前の期間を保持するためである。表示差があっても、期間を過ぎた注文が誤ってキャンセルされることはない。サーバーが最新設定で判定し、期間を過ぎた注文のキャンセル要求を拒否するためである。設定変更直後の表示差は許容している。管理者向けの説明にも、この表示差を記載している。</p></div>
+  <div class="key"><p><b>受け入れ時の判断:</b> 利用者は、設定変更直後の表示差を許容することを確認済みである。</p><p>設定変更直後の表示差への追加対応は、今回の完了条件に含めない。サーバーが最新設定で判定することで、表示差があっても誤ったキャンセルを防げるためである。</p></div>
+</section>
+
+<section id="detail-4" class="detail-page-panel" aria-labelledby="detail-label-4" hidden>
+  <h2>採用しなかった案</h2>
+
+  <div class="options">
+  <div class="option">
+    <p class="option-label"><span>不採用</span></p>
+    <h4>すべての契約先へ14日を既定値として適用する</h4>
+    <dl>
+      <dt>採用しなかった理由</dt><dd>契約先が既存の操作を予告なく制限され、利用者が求めていない移行と周知が必要になる</dd>
+      <dt>再検討するとき</dt><dd>全契約先への共通の方針と移行計画が別途決まったとき</dd>
+    </dl>
+  </div>
+  <div class="option">
+    <p class="option-label"><span>今回の対象外</span></p>
+    <h4>注文詳細を開くたびに期間設定を取り直す</h4>
+    <dl>
+      <dt>採用しなかった理由</dt><dd>設定を読む仕組み全体が変わり、今回直す範囲を超える。サーバーは最終判断で誤ったキャンセルを防げる</dd>
+      <dt>再検討するとき</dt><dd>利用者が設定変更をすぐ画面へ映すことを求めたとき</dd>
+    </dl>
+  </div>
+</div>
+
+</section>
+</main>
+</div>
+</div>
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>

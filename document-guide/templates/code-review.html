@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文のキャンセル期限のコード品質レビュー</title>
+<link rel="stylesheet" href="common.css">
+<style>
+.review-comparison { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; margin:20px 0; }
+  .review-comparison > div { min-width:0; }
+  .review-comparison pre { margin-bottom:8px; }
+  .review-note { font-size:12.5px; color:var(--ink-2); }
+  .review-observation { border-left:3px solid var(--warn); background:var(--warn-soft); padding:16px 20px; margin:20px 0; }
+  .review-observation h4 { font-family:var(--font-heading); font-size:16px; line-height:1.55; margin:0 0 10px; }
+  .review-observation p:last-child, .review-observation pre:last-child { margin-bottom:0; }
+  .observation-label { color:var(--warn); font-size:12px; margin-bottom:6px; }
+  td code, p code { overflow-wrap:anywhere; }
+  .detail-page-overview > h2 { margin-top:28px; }
+  @media(max-width:1050px) {
+  }
+  @media(max-width:900px) { .review-comparison { grid-template-columns:1fr; gap:12px; } }
+  @media print { .review-observation { break-inside:avoid; -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style>
+<script src="flow.js" defer></script>
+</head>
+<body>
+<div class="doc"><div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="処理単位">
+  <p class="detail-page-navigation-label">目次</p>
+  <button id="detail-label-overview" type="button" class="detail-page-navigation-item" aria-controls="detail-overview" aria-current="true">概要</button>
+  <button id="detail-label-1" type="button" class="detail-page-navigation-item" aria-controls="detail-1" aria-current="false"><span class="detail-page-navigation-number">01</span><span>キャンセル要求と保存</span></button>
+  <button id="detail-label-2" type="button" class="detail-page-navigation-item" aria-controls="detail-2" aria-current="false"><span class="detail-page-navigation-number">02</span><span>一覧と詳細の期限表示</span></button>
+  <button id="detail-label-3" type="button" class="detail-page-navigation-item" aria-controls="detail-3" aria-current="false"><span class="detail-page-navigation-number">03</span><span>一覧の取得とページ表示</span></button>
+</nav>
+<main class="detail-page-content">
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+<div class="detail-page-hero">
+  <p class="eyebrow">受注管理 › 注文キャンセル › コードレビュー</p>
+  <h1>注文のキャンセル期限 — 修正箇所と関連処理</h1>
+</div>
+
+<h2>レビュー観点</h2>
+<p>注文のキャンセル期限を追加した処理と、関連する既存の実装を確認する。共通化、保守性、効率、不具合の観点から、判定と保存の役割分担、画面の表示や保存結果への影響を評価する。</p>
+<!-- 書き手へ: | 場面 | 書き手がすること |
+|---|---|
+| 常に | 図と本文を対応するコードや仕様に照らして確認する |
+| 呼び出しや値の受け渡しのする側と向き、仕様が求めることと実装が保証することを取り違えている | その箇所を直す | -->
+<!-- 書き手へ: 観点表は、この資料で何を根拠に判断するかを先に示す。観点表は、観点と確認内容の列を保つ。
+
+| 場面 | 書き手がすること |
+|---|---|
+| 常に | 「今回の確認対象」だけを対象の差分から書く |
+| 常に | 資料の使い方を本文に書かない |
+
+読み手が本文の判断をどの観点に照らして読むかを決めるためである。 -->
+<div class="table-wrap"><table><thead><tr><th class="table-label">観点</th><th class="table-description">確認内容</th><th class="table-description">今回の確認対象</th></tr></thead><tbody>
+<tr><th scope="row" class="table-label">共通化</th><td class="table-description">同じ役割を担う既存処理の入力・結果・利用条件を比べ、再利用できるかを確認する。</td><td class="table-description"><a href="#display-relations">一覧の判定式と、詳細画面が使う既存の期限判定関数</a>を同じ入力で比較する。</td></tr>
+<tr><th scope="row" class="table-label">保守性</th><td class="table-description">処理がどう役割を分け、どう分岐し、状態をどう管理するかから、仕様を変えたときに影響が及ぶ範囲を確認する。</td><td class="table-description"><a href="#display-relations">期限を判定する2か所の処理</a>と、<a href="#cancel-state">可否の判定と保存の順序</a>を確認する。</td></tr>
+<tr><th scope="row" class="table-label">効率</th><td class="table-description">処理回数や、取得・保持するデータ量が、必要以上に増えていないかを確認する。</td><td class="table-description"><a href="#list-volume">一覧1ページの表示件数と、Repositoryから受け取る件数</a>を比較する。</td></tr>
+<tr><th scope="row" class="table-label">不具合</th><td class="table-description">境界値や拒否・例外時の処理で、応答と保存結果が仕様どおりになるかを確認する。</td><td class="table-description"><a href="#cancel-state">拒否時の状態更新</a>と、<a href="#display-comparison">期限の直前・ちょうど・直後の判定</a>が仕様どおりかを確かめる。</td></tr>
+</tbody></table></div>
+
+<h2>変更の目的と対象</h2>
+<p>契約先は、注文をキャンセルできる日数を設定する。サーバーには、要求時の設定で判定し、出荷済みでなくても期限に達した注文の要求を拒否することを求める。一覧画面には期限切れの表示を追加する。変更対象は <code>OrderCancelService.ts</code>、<code>OrderList.tsx</code>、<code>OrderListService.ts</code> である。</p>
+<p>出荷前の注文について、仕様で求める期限の扱いは次のとおりである。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-label">日数の設定</th><th class="table-description">判定時刻</th><th class="table-label">期限による制限</th></tr></thead><tbody>
+<tr><td class="table-label">未設定</td><td class="table-description">問わない</td><td class="table-label">制限しない</td></tr>
+<tr><td class="table-label">設定済み</td><td class="table-description">注文日時に日数を足した期限より前</td><td class="table-label">制限しない</td></tr>
+<tr><td class="table-label">設定済み</td><td class="table-description">期限と同時刻以降</td><td class="table-label">キャンセルできない</td></tr>
+</tbody></table></div>
+<p>サーバーに求める応答と保存結果は次のとおりである。対象差分が満たしているかは、後のコードで確認する。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-description">判定</th><th class="table-description">サーバーの応答</th></tr></thead><tbody>
+<tr><td class="table-description">出荷済み</td><td class="table-description">409 を返して拒否し、保存済みのデータを変えない</td></tr>
+<tr><td class="table-description">出荷済みでなく、期限切れ</td><td class="table-description">422 を返して拒否し、保存済みのデータを変えない</td></tr>
+<tr><td class="table-description">受け付けた</td><td class="table-description">注文、操作履歴、outboxを同じトランザクションで保存する。決済済みの場合だけ返金の記録も保存する</td></tr>
+</tbody></table></div>
+
+<h2>修正箇所と関連ファイルの全体図</h2>
+<div class="diagram-legend"><span>対象差分</span><span>関連する既存処理</span></div>
+<!-- 書き手へ: 全体図は、対象差分と関連する既存処理を分けて示す。全体図は、凡例の2語を保つ。題は、「呼び出し関係」「値の流れ」「比較」の語で矢印と破線の意味を伝える。
+
+| 場面 | 書き手がすること |
+|---|---|
+| 常に | 箱を対象のファイルと処理で置き換える |
+| 常に | 図の読み方を題と本文に書かない |
+
+読み手が変更の影響が及ぶ範囲を先に掴むためである。 -->
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>呼び出し関係 — キャンセル要求を保存処理へ渡す</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderCancelController.ts</b><small>server/src/orders/</small><span>要求をサービスへ渡し、戻り値をHTTP応答へ変換</span></div>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#detail-1" data-node="node-2" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderCancelService.ts</b><small>server/src/orders/</small><span>期限の判定を追加する</span></a>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>注文・関連記録のRepository</b><span>OrderRepository.ts / RefundRepository.ts / AuditLogRepository.ts / OutboxRepository.tsが保存を分担</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="call" data-role="sequence"><span>cancelを呼ぶ</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="call" data-role="sequence"><span>各保存処理を呼ぶ</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>呼び出し関係 — 一覧に表示する注文を取得する</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-4" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderList.tsx</b><small>client/src/features/orders/</small><span>表示ページの注文を要求</span></div>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#detail-3" data-node="node-5" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderListService.ts</b><small>server/src/orders/</small><span>注文日時を含む注文の取得方法を変更</span></a>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-6" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderRepository.ts</b><span>全件取得とページ取得の既存APIを持つ</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-4" data-to="node-5" data-kind="call" data-role="sequence"><span>GET /orders<br>Controller経由</span></span>
+        <span data-from="node-5" data-to="node-6" data-kind="call" data-role="sequence"><span>findAllForTenant<br>を呼ぶ</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>Serviceは、各Repositoryを保存と取得に分けて呼び出す。</figcaption>
+</figure>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>値の流れ — 一覧が使うキャンセル可能日数</h3>
+    <div class="diagram-graph" data-subject="data-flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-1" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>SessionStore.ts</b><small>client/src/store/</small><span>サインイン時のcancelWindowDaysを保持</span></div>
+          <a class="diagram-node" href="#detail-2" data-node="node-2" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderList.tsx</b><small>client/src/features/orders/</small><span>注文日時と日数から期限切れを判定して表示</span></a>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="sequence"><span>取得した日数</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>OrderList.tsxが取得した日数の流れ</figcaption>
+</figure>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>同じ役割を担う処理の比較 — 一覧と詳細の期限判定</h3>
+    <div class="diagram-graph" data-subject="comparison">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#detail-2" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderList.tsx</b><span>今回追加した期限の判定式</span></a>
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>cancelWindow.ts</b><small>client/src/features/orders/</small><span>OrderDetail.tsxが呼ぶ既存の期限判定</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="compare" data-role="comparison"><span>同じ入力で比較</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>一覧は、既存関数を呼んでいない。</figcaption>
+</figure>
+<p class="review-note">画面は、サインイン時の設定を保持する。サーバーは、要求ごとに設定を読む。このレビューは、設定を読む時点が違うために生じる差と、同じ設定と時刻で判定しても生じる差を分けて確認する。</p>
+</header>
+
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+<h2>キャンセル要求と保存</h2>
+<p>キャンセル要求の受付から保存の確定まで、期限の判定と既存の保存処理の役割を確認する。</p>
+
+<h3>キャンセルできるかの判定と保存の役割分担</h3>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>呼び出し関係 — 要求を受けて可否を判定する</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderCancelController.ts</b><span>orderId、契約先、操作した利用者を渡す</span></div>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#cancel-code" data-node="node-2" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderCancelService.ts</b><span>注文を読み、出荷済みなら拒否。期限の判定を追加</span></a>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>CancelPolicy.ts</b><span>注文日時・日数・現在時刻から、期限内かを判定して返す</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="call" data-role="sequence"><span>cancelを呼ぶ</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="call" data-role="sequence"><span>withinWindow<br>を呼ぶ</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>Controllerは、Serviceの戻り値に応じて200・409・422を返す。</figcaption>
+</figure>
+<p>仕様で <code>CancelPolicy.withinWindow</code> に求める戻り値は次のとおりである。Policy本体は掲載されていないため、実装がこの仕様を満たすかは未確認である。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-label">日数</th><th class="table-label">判定時刻</th><th class="table-label">仕様上の戻り値</th></tr></thead><tbody>
+<tr><td class="table-label">null</td><td class="table-label">問わない</td><td class="table-label">true</td></tr>
+<tr><td class="table-label">設定済み</td><td class="table-label">期限より前</td><td class="table-label">true</td></tr>
+<tr><td class="table-label">設定済み</td><td class="table-label">期限と同時刻以降</td><td class="table-label">false</td></tr>
+</tbody></table></div>
+<p>Policyは、期間内かを返す。Serviceは、受け付けるかを判断し、各Repositoryへ保存を求める。注文は、出荷済みなら既存の判定でトランザクションに入る前に拒否される。</p>
+
+<h3>受け付けた注文と関連記録の保存</h3>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>呼び出し関係 — サービスから各保存処理へ</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderCancelService.ts</b><span>db.transaction内でRepositoryを呼ぶ</span></div>
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>注文・関連記録のRepository</b><span>OrderRepository.ts / RefundRepository.ts / AuditLogRepository.ts / OutboxRepository.tsが各記録を保存する</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="call" data-role="sequence"><span>同じtxで<br>各保存処理を呼ぶ</span></span>
+      </div>
+    </div>
+  </section>
+</figure>
+<div class="table-wrap"><table><thead><tr><th class="table-label">コールバックの終わり方</th><th class="table-description">トランザクションがすること</th></tr></thead><tbody>
+<tr><td class="table-label">正常終了した</td><td class="table-description">変更をコミットする</td></tr>
+<tr><td class="table-label">例外が発生した</td><td class="table-description">変更をロールバックする</td></tr>
+</tbody></table></div>
+<p>Serviceは、出荷前で期間内の注文では、注文と関連記録の保存に同じ<code>tx</code>を渡す。トランザクションは、保存中に例外が起きれば途中の変更もロールバックする。Serviceは、期限の判定を修正する際も、同じ<code>tx</code>を渡す構成を保つ。注文が、保存に失敗しても関連記録と食い違わないためである。</p>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>値の流れ — 返金要求の通知が保存され、ワーカーへ届く</h3>
+    <div class="diagram-graph" data-subject="data-flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OutboxRepository.ts</b><span>refund.requestedとorderIdを保存する</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-2" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>outbox</b><span>トランザクションのコミット後に読み取り可能になる</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="excluded"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">対象外</span></div><b>RefundWorker.ts</b><span>通知を読んで返金処理を始める。ワーカー本体と外部決済サービスへの接続は確認範囲外</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="sequence"><span>保存する通知</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="data" data-role="sequence"><span>orderIdを含む<br>保存済みの通知</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>返金の依頼をどう受け渡すか。返金ジョブは、コミット済みの返金の依頼を読む。Repositoryは、返金ジョブを直接呼び出さない。</figcaption>
+</figure>
+<p>返金の依頼は、保存が途中で失敗した場合は残らない。返金の依頼が、注文の更新と同じトランザクションで保存されるためである。Serviceは、キャンセルを受け付けた場合は未決済でもoutboxを作る。返金ジョブは、返金の記録がない注文には何もしない。</p>
+<p class="review-note">確認範囲は返金の依頼の保存までであり、返金ジョブ本体が仕様を満たすかは未確認である。</p>
+
+<h3 id="cancel-code">期限切れの要求が保存へ進む経路</h3>
+<p>仕様では、出荷前でも期限切れなら、注文と関連記録を変えずに拒否する必要がある。しかし、対象差分では期限を判定する前に注文を更新している。期間内なら保存を続けるが、期限切れの場合にも更新が残るかを確認する。</p>
+<p class="code-ref">server/src/orders/OrderCancelService.ts — cancelの対象差分</p>
+<pre class="diff"><code>return db.transaction(async (tx) =&gt; {
+  await OrderRepository.markCanceled(tx, order.id);
+<span class="add">+ if (!CancelPolicy.withinWindow(</span>
+<span class="add">+     order.placedAt, tenant.settings.cancelWindowDays, now())) {</span>
+<span class="add">+   return { ok: false, reason: 'cancel_window_exceeded' };</span>
+<span class="add">+ }</span>
+  const refund = order.paidAt ? RefundCalculator.forOrder(order) : null;
+  if (refund) await RefundRepository.insert(tx, {
+    orderId: order.id, amount: refund.amount, status: 'pending'
+  });
+  await AuditLogRepository.insert(tx, {
+    action: 'order.canceled', targetId: order.id, actorId
+  });
+  await OutboxRepository.insert(tx, {
+    type: 'refund.requested', payload: { orderId: order.id }
+  });
+  return { ok: true };
+});</code></pre>
+
+<figure class="diagram" id="cancel-state">
+  <section class="diagram-scene">
+    <h3>処理順と状態変化 — キャンセル可能日数が3日で、4日前に受けた出荷前の注文</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderRepository.markCanceled</b><span>confirmed → canceled</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>追加した期限切れの判定</b><span>ok: falseを返して正常終了</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>Controllerは422を返す</b><span>注文はcanceled。返金記録・監査ログ・outboxは保存されない</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="control" data-role="sequence"><span>続いて期限判定</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="control" data-role="sequence"><span>コミット</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>期限切れを表す値を返しても、注文の更新はコミットされる。掲載コードとトランザクションの仕様からの判断であり、実DBでの再現は未実施。</figcaption>
+</figure>
+<aside class="review-observation" aria-labelledby="cancel-finding">
+  <p class="observation-label">不具合・保守性 — 可否の判定と状態更新</p>
+  <h4 id="cancel-finding">拒否した要求でも注文の更新が確定する</h4>
+  <p>トランザクションは、注文の更新をコミットする。Serviceが更新後に拒否を表す値を返し、コールバックを正常終了させるためである。決済済みの注文では、キャンセル済みに変わっても返金の記録が作られず、注文と返金記録が食い違う。</p>
+  <p>期限の判定を最初の書き込みより前へ移す。受付時の保存は、既存のトランザクションにまとめたままにする。修正後は、次の結果を確かめる。</p>
+  <div class="table-wrap"><table><thead><tr><th class="table-description">要求の扱い</th><th class="table-description">注文と関連記録の状態</th></tr></thead><tbody>
+  <tr><td class="table-description">期限切れの要求を処理した</td><td class="table-description">注文は関連記録とともに変わらない</td></tr>
+  <tr><td class="table-description">受け付けた</td><td class="table-description">注文は関連記録と一緒に保存される</td></tr>
+  </tbody></table></div>
+</aside>
+<p class="review-note">改善案は、まだ適用されておらず、実DBでも確認されていない。</p>
+</section>
+
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+<h2>一覧と注文詳細の期限表示</h2>
+<p>一覧に期限切れを知らせる表示を加える。一覧と詳細画面は同じ設定を使うため、両方の入力と判定処理を確認する。</p>
+
+<h3>一覧と注文詳細で期限を判定する役割</h3>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>値の流れ — 一覧が使うキャンセル可能日数</h3>
+    <div class="diagram-graph" data-subject="data-flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-1" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>SessionStore.ts</b><span>cancelWindowDaysを保持</span></div>
+          <a class="diagram-node" href="#display-code" data-node="node-2" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderList.tsx</b><span>今回追加した式で、期限切れを表示するか判定</span></a>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="sequence"><span>取得した日数</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>OrderList.tsxは、SessionStoreから日数を取得する。</figcaption>
+</figure>
+<p>一覧は、応答に含まれる注文日時と<code>SessionStore</code>の日数を使い、画面内に追加した式で期限を判定する。詳細画面は、同じ意味の入力を既存関数へ渡している。</p>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>呼び出し関係 — 詳細画面が使う既存の期限判定</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderDetail.tsx</b><span>同じSessionStoreの日数と注文日時を渡す</span></div>
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>cancelWindow.ts</b><span>期限内かを判定して返す。詳細画面は出荷状態も確認してボタンを表示</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="call" data-role="sequence"><span>withinCancelWindow<br>を呼ぶ</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>詳細画面は、既存関数の期限判定と出荷状態からボタン表示を決める。</figcaption>
+</figure>
+<p class="code-ref">client/src/features/orders/OrderDetail.tsx — 既存関数を使う表示判定</p>
+<pre><code>const canCancel = order.status !== 'shipped' &amp;&amp;
+  withinCancelWindow(
+    order.placedAt, SessionStore.cancelWindowDays(), nowMs
+  );</code></pre>
+<p>詳細画面は、出荷状態と期限の両方を確かめてボタンを表示する。既存関数は、注文日時・日数・判定時刻から期間内かを求める。既存関数は、一覧と詳細画面で共通に使える。一覧が既存関数と入力の意味が一致し、同じクライアント環境で使えるためである。詳細画面は、出荷状態でボタンを表示するかどうかの判断を残せる。</p>
+<p>判定は、サーバーとクライアントで別々に行うこと自体を問題にしない。サーバーが、クライアントと実行環境が異なるためである。期限の判定は、同じクライアント内で再利用できるものどうしを比べる。</p>
+
+<h3 id="display-code">同じ入力で期限の境界を確かめる</h3>
+<figure class="diagram" id="display-relations">
+  <section class="diagram-scene">
+    <h3>同じ役割を担う処理の比較 — 注文日時・日数・時刻から期限内かを判定する</h3>
+    <div class="diagram-graph" data-subject="comparison">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#display-code" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderList.tsx</b><span>一覧に追加したwithinWindowの式</span></a>
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>cancelWindow.ts</b><span>詳細画面が使うwithinCancelWindow</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="compare" data-role="comparison"><span>同じ入力で比較</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>一覧に追加した式と詳細画面の既存関数は、同じ入力を受け取る期限判定である。</figcaption>
+</figure>
+
+<div class="review-comparison">
+  <div><p class="code-ref">client/src/features/orders/OrderList.tsx — 一覧に追加したコード</p>
+<pre class="diff"><code><span class="add">+ const days = SessionStore.cancelWindowDays();</span>
+<span class="add">+ const withinWindow = days === null ||</span>
+<span class="add">+   Date.parse(order.placedAt) + days * DAY_MS &gt;= nowMs;</span>
+<span class="add">+ const expired = !withinWindow;</span></code></pre>
+  <p>一覧は、<code>expired</code> がtrueなら「キャンセル期限を過ぎています」を表示する。<code>nowMs</code> は画面の判定時刻である。</p></div>
+  <div><p class="code-ref">client/src/features/orders/cancelWindow.ts — 比較する既存コード</p>
+<pre><code>export function withinCancelWindow(
+  placedAt: string, days: number | null, nowMs: number
+) {
+  if (days === null) return true;
+  return Date.parse(placedAt) + days * DAY_MS &gt; nowMs;
+}</code></pre>
+  <p><code>OrderDetail.tsx</code> は、既存関数を呼ぶ。</p>
+  <div class="table-wrap"><table><thead><tr><th class="table-label">日数の設定</th><th class="table-description">既存関数がすること</th></tr></thead><tbody>
+  <tr><td class="table-label">未設定</td><td class="table-description">trueを返す</td></tr>
+  <tr><td class="table-label">設定済み</td><td class="table-description">期限より前ならtrue、それ以外はfalseを返す</td></tr>
+  </tbody></table></div></div>
+</div>
+<p id="display-comparison">注文日時を <code>2026-04-01T10:00:00Z</code> に固定し、両方の式へ同じ日数と判定時刻を渡す。設定の取得時点や端末時計の差を含めず、式そのものの違いを比較する。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-label">日数</th><th class="table-description">判定時刻（UTC）</th><th class="table-label">仕様上の戻り値</th><th class="table-label">詳細画面の既存関数</th><th class="table-label">一覧に追加した式</th></tr></thead><tbody>
+<tr><td class="table-label">3日</td><td class="table-description">4月4日 09:59</td><td class="table-label">true</td><td class="table-label">true</td><td class="table-label">true</td></tr>
+<tr><td class="table-label">3日</td><td class="table-description">4月4日 10:00</td><td class="table-label">false</td><td class="table-label">false</td><td class="table-label">true</td></tr>
+<tr><td class="table-label">3日</td><td class="table-description">4月4日 10:01</td><td class="table-label">false</td><td class="table-label">false</td><td class="table-label">false</td></tr>
+<tr><td class="table-label">null</td><td class="table-description">問わない</td><td class="table-label">true</td><td class="table-label">true</td><td class="table-label">true</td></tr>
+</tbody></table></div>
+<aside class="review-observation" aria-labelledby="display-finding">
+  <p class="observation-label">共通化・保守性・不具合 — 同じ役割を担う処理の比較</p>
+  <h4 id="display-finding">期限ちょうどの表示が画面間で食い違い、仕様変更時の修正箇所も増える</h4>
+  <p>同じ注文でも、期限ちょうどの案内が一覧と詳細画面で食い違う。追加した式の <code>&gt;=</code> が既存関数の <code>&gt;</code> と異なるためである。仕様では、サーバーも期限ちょうどの要求を拒否する必要があるが、Policy本体での確認は残っている。</p>
+  <p>一覧は、既存関数を呼べば、期限を判定する場所を1つにまとめ、仕様を変えるときの修正箇所を減らせる。</p>
+  <p class="code-ref">OrderList.tsx — 改善案（対象差分には未適用）</p>
+<pre><code>const expired = !withinCancelWindow(
+  order.placedAt, SessionStore.cancelWindowDays(), nowMs
+);</code></pre>
+</aside>
+<p class="review-note">表は、掲載した式から求めた結果である。実画面の表示と再描画は、確かめていない。判定結果は、改善後も、期限の直前・ちょうど・直後と日数が未設定の場合について、同じ入力で比べる。</p>
+</section>
+
+<section id="detail-3" class="detail-page-panel" aria-labelledby="detail-label-3" hidden>
+<h2>一覧の取得とページ表示</h2>
+<p>一覧は、1ページに20件を表示し、各注文の日時から期限を判定する。今回の取得方法が、表示に必要な注文と値を過不足なく取得するかを確認する。</p>
+
+<h3>画面が必要とする注文を取得元まで辿る</h3>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>呼び出し関係 — 一覧の要求を受けて注文を取得する</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderList.tsx</b><span>表示するページを要求し、各行のplacedAtから期限切れを判定して表示</span></div>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#list-code" data-node="node-2" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderListService.ts</b><span>取得した配列から、offsetを起点に20件を切り出す</span></a>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderRepository.ts</b><span>契約先の全注文を配列で返す</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="call" data-role="sequence"><span>GET /orders<br>Controller経由</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="call" data-role="sequence"><span>findAllForTenant<br>を呼ぶ</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>Serviceは契約先の全注文を取得してから、表示する20件を選ぶ。</figcaption>
+</figure>
+<p>期限は、表示する各注文の<code>placedAt</code>から判定する。表示する行を選んだ後で期限を判定する順序は、現在の仕様に合っている。期限切れは、表示にだけ使い、行の絞り込みや並べ替えには使わないためである。</p>
+
+<h3 id="list-code">全件取得すると表示までに何件を扱うか</h3>
+<p>Serviceは、今回の差分で、Repositoryから全注文を受け取り、表示する20件を切り出す。</p>
+<p class="code-ref">server/src/orders/OrderListService.ts — listの対象差分</p>
+<pre class="diff"><code><span class="del">- return OrderRepository.findPageForTenant(tenant.id, {</span>
+<span class="del">-   offset, limit: 20, orderBy: ['placed_at DESC', 'id DESC']</span>
+<span class="del">- });</span>
+<span class="add">+ const orders = await OrderRepository.findAllForTenant(tenant.id);</span>
+<span class="add">+ return orders.slice(offset, offset + 20);</span></code></pre>
+<figure class="diagram" id="list-volume">
+  <section class="diagram-scene">
+    <h3>値の流れ — 注文が50,000件ある契約先で、全件取得して1ページ目を表示</h3>
+    <div class="diagram-graph" data-subject="data-flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderRepository.ts</b><span>findAllForTenantがDBから全注文を読み取り、配列で返す</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderListService.ts</b><span>sliceで先頭20件を選ぶ</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderList.tsx</b><span>20件の期限を判定して表示</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="sequence"><span>50,000件の配列</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="data" data-role="sequence"><span>20件の応答<br>Controller経由</span></span>
+      </div>
+    </div>
+  </section>
+</figure>
+<p>注文は、画面に表示しないものもRepositoryからServiceへ渡り、メモリに残る。<code>findAllForTenant</code>が、全注文を配列へ読み込むためである。注文は、表示が20件でも、渡してメモリに残す数が契約先の注文数に比例して増える。</p>
+
+<h3>既存のページ取得で必要な値が揃うか</h3>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>同じ役割を担う処理の比較 — 表示するページの注文を取得する</h3>
+    <div class="diagram-graph" data-subject="comparison">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>OrderListService.tsの取得処理</b><span>必要なのは表示するページの注文</span></div>
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderRepository.findPageForTenant</b><span>既存のページ取得。placedAtも返す</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="compare" data-role="comparison"><span>取得条件を比較</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>ページ取得APIは、変更前に使っていたもので、現在の全件取得とは別である。</figcaption>
+</figure>
+<p>両方のAPIは、契約先で絞り込み、注文日時・IDの降順で返す。<code>findPageForTenant</code> はoffsetとlimitをDBへ渡し、表示するページの注文だけを返す。<code>placedAt</code> も返すため、期限判定に必要な値が揃う。並び順が同じなので、ページ内の注文の順序も保てる。</p>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>値の流れ — 既存のページ取得で同じ1ページ目を表示</h3>
+    <div class="diagram-graph" data-subject="data-flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderRepository.ts</b><span>findPageForTenantが同じ絞り込み・並び順で対象の20件を返す</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderListService.ts</b><span>ページの20件を返す</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderList.tsx</b><span>同じ20件の期限を判定して表示</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="sequence"><span>20件の配列</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="data" data-role="sequence"><span>20件の応答<br>Controller経由</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>既存APIによる、表示するページの注文の取得と受け渡し</figcaption>
+</figure>
+<p>比較した件数は、取得・転送・保持する注文の件数である。DB内部の走査行数と応答時間は測定していない。</p>
+<aside class="review-observation" aria-labelledby="list-finding">
+  <p class="observation-label">効率 — 表示に必要な件数と取得件数の比較</p>
+  <h4 id="list-finding">既存のページ取得で、期限の表示を保ったまま渡す注文の数を減らせる</h4>
+  <p>取得処理を <code>findPageForTenant</code> に戻す。一覧表示に全件取得は必要ない。Serviceが受け取る配列を、表示する20件に減らせる。件数表示に使うCOUNT取得は引き続き利用できる。</p>
+</aside>
+<p>将来、期限で注文を絞り込む場合は、期限の判定とページ分割をどの段階で行うかを改めて決める。</p>
+<p class="review-note">実DBのSQL、索引、応答時間は未確認である。修正後は、同じ注文IDが同じ順序で返ることと、DBにoffset・limitが渡ることを確認する。</p>
+</section>
+</main></div></div>
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>

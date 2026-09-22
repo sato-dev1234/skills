@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文のキャンセル期限のエージェントテスト手順書</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* 書き手へ: 印は、概要の「利用者に委ねる操作」の規則を各手順に当てた結果を示す。書き手は、印を手順ごとに付け、概要の規則と食い違わせない。実施者が手順の前に誰が操作するかを知るためである。 */
+  .who { display: inline-block; font-family: var(--font-mono); font-size: 11px; line-height: 1.7; padding: 0 6px; border-radius: 3px; margin-right: 6px; vertical-align: 1.5px; white-space: nowrap; font-weight: 500; }
+  .who--doer { background: var(--accent-soft); color: var(--accent); }
+  .who--user { background: var(--warn-soft); color: var(--warn); }
+  td .who { margin-right: 0; }
+
+  /* 書き手へ: 手順には実施者、操作、期待結果を示す。利用者が操作した結果を実施者へ渡す場合は、引き継ぎ欄に伝える内容を記す。各検証場面には目的、実行前の条件、入力、操作後の状態、停止・再開条件を示す。操作後の状態は期待結果として記す。共通の条件は準備にまとめ、ケース固有の条件は該当手順に置く。
+
+  | 場面 | 書き手がすること |
+  |---|---|
+  | 常に | 1つの手順に2つの操作を入れない |
+  | 判断・ダイアログの応答・実施者が切り替わる | その境界で実行単位を分け、続行する条件を示す |
+  | 操作対象を記す | 実画面で確認した名前・役割、またはロケーターを使う。snapshotの一時的な参照値は残さない |
+  | 常に | ラベルの意味を本文に書かない |
+
+  実施者が結果を手順ごとに記入するためである。 */
+  ol.steps { padding-left: 24px; margin: 12px 0 16px; }
+  ol.steps > li { margin-bottom: 18px; }
+  ol.steps > li::marker { font-family: var(--font-mono); color: var(--ink-3); font-weight: 500; }
+  .step-head { margin: 0 0 5px; font-family: var(--font-heading); font-size: 15px; font-weight: 700; }
+  .step-body { margin: 0 0 6px; }
+  .step-note { margin: 0 0 6px; padding: 5px 0 5px 12px; border-left: 2px solid var(--line); font-size: 14px; color: var(--ink-2); }
+  .step-note .label { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); display: block; letter-spacing: .04em; }
+  .step-note--expect { border-left-color: var(--accent); }
+  .step-note--handoff { border-left-color: var(--warn); }
+  .step-note table { margin: 5px 0 0; width: 100%; }
+  .step-note table td { padding: 3px 8px; font-size: 13.5px; }
+  .step-note table td:first-child { white-space: nowrap; }
+
+  /* 書き手へ: | 場面 | 書き手がすること |
+  |---|---|
+  | 値が環境を見ないと決まらない | 空欄の印 .blank で置き、値の名前、取得方法、確定する時点を書く。再実行時は今回の対象に合う値か確認する |
+  | 値を埋めた | 埋めた印 .filled を付け、得た手順を書く |
+
+  実施者が値の出どころを追えるためである。 */
+  .blank { display: block; min-height: 1.6em; padding: 3px 8px; border: 1px dashed var(--warn); border-radius: 3px; background: var(--surface); color: var(--ink-2); font-size: 12.5px; line-height: 1.6; }
+  .blank::before { content: "空欄"; display: inline-block; margin-right: 6px; font-family: var(--font-mono); font-size: 10.5px; color: var(--warn); }
+  .filled { display: block; padding: 3px 8px; border-left: 2px solid var(--accent); background: var(--surface); font-size: 13.5px; line-height: 1.6; }
+  .filled .source { display: block; font-size: 11.5px; color: var(--ink-3); }
+
+  .undetermined { color: var(--warn); font-weight: 500; }
+@container (max-width: 640px) {
+  .blank, .filled { padding-left: 2px; padding-right: 2px; }
+}
+</style>
+<script src="flow.js" defer></script>
+</head>
+<body>
+<div class="doc">
+
+<div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="詳細">
+  <p class="detail-page-navigation-label">目次</p>
+  <button id="detail-label-overview" class="detail-page-navigation-item" type="button" aria-current="true" aria-controls="detail-overview">概要</button>
+  <button id="detail-label-0" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-0"><span class="detail-page-navigation-number">00</span><span>検証の準備</span></button>
+  <button id="detail-label-1" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-1"><span class="detail-page-navigation-number">01</span><span>ボタンの表示を確かめる</span></button>
+  <button id="detail-label-2" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-2"><span class="detail-page-navigation-number">02</span><span>キャンセルの結果と記録を確かめる</span></button>
+  <button id="detail-label-3" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-3"><span class="detail-page-navigation-number">03</span><span>設定変更の反映を確かめる</span></button>
+</nav>
+
+<main class="detail-page-content">
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+<div class="detail-page-hero">
+  <p class="eyebrow">受注管理 › 注文キャンセル › エージェントテスト手順書</p>
+  <h1>注文のキャンセル期限のエージェントテスト手順書</h1>
+  <p class="sub">この手順書は、契約先ごとに「注文から何日以内ならキャンセルできるか」を設定できるようにし、期間を過ぎた注文はキャンセルできなくする変更を、実機で確かめるためのものである。エージェントは、この手順書を読み、検証する。利用者は、手順書が委ねた操作を行う。</p>
+</div>
+<p class="code-ref">検証対象: 注文詳細画面、キャンセル要求、契約先の期間設定</p>
+
+<!-- 書き手へ: 手順作成時の確認と本検証の実施結果を分ける。冒頭には確認済みの範囲と実行前の不足を書く。ケースの実行可否は、そのケースと依存する準備の内容から判断する。実行後に観測・記入する欄の空白は、開始の妨げにしない。見本の確認済みの値は、実際の確認結果に置き換える。 -->
+<div class="key"><p><b>実行前に確認する内容が残っている。</b>契約先Aのコードは確認している。対象環境、契約先Bと対象注文、操作経路と権限は、準備と実画面の確認で確定する。期限切れの案内の文言と各検証の結果は、本検証で観測して記入する。</p></div>
+
+<p>受注管理が今回の対象である。利用者は、注文詳細画面からキャンセルできる。返金の記録は、決済済みの注文にできる。返金は、後から自動で進む。注文は、これまでは出荷前ならいつでもキャンセルできた。</p>
+<p>契約先は、キャンセルできる期間を日数で持つ。出荷前で期限を過ぎた注文は、次のように扱う。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">場所</th><th class="table-description">期限を過ぎた注文の扱い</th></tr></thead>
+<tbody>
+<tr><td class="table-label">注文詳細画面</td><td class="table-description">キャンセルボタンを出さない</td></tr>
+<tr><td class="table-label">サーバー</td><td class="table-description"><code>422</code> で拒否する</td></tr>
+</tbody>
+</table>
+</div>
+<p>画面とサーバーは、それぞれ次の時刻と設定で期間を判定する。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">判定の場所</th><th class="table-description">判定に使う時刻と設定</th></tr></thead>
+<tbody>
+<tr><td class="table-label">画面</td><td class="table-description">端末の時計と、サインイン時に受け取った日数で判定する</td></tr>
+<tr><td class="table-label">サーバー</td><td class="table-description">要求ごとに読む設定と、サーバーの時刻で判定する</td></tr>
+</tbody>
+</table>
+</div>
+<p>表示が、サーバーの判定の結果と食い違う場面がある。</p>
+
+<!-- 書き手へ: 図は、期間が関わる場面を行ごとに並べる。図は、場面ごとの番号を本文の見出しと揃えて持ち、行の間に順序を表す矢印を持たない。書き手は、図の読み方を本文と題に書かない。読み手が図の作りだけで読めるためである。 -->
+<figure class="diagram">
+  <div class="diagram-legend"><span class="existing">今までと同じ（回帰確認）</span><span class="changed">今回変わる（重点確認）</span><span class="excluded">確認範囲外</span></div>
+  <section class="diagram-scene">
+    <h3>サインインした直後（利用者の操作はない）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>契約先の設定を受け取る</b><span class="change">+ キャンセルできる期間（日数）を一緒に受け取る</span></div>
+          <div class="diagram-node" data-node="node-2" data-kind="data" data-state="changed"><div class="diagram-meta"><span class="diagram-role">データ</span><span class="diagram-state">変更あり</span></div><b>画面が持つ設定</b><span class="body">サインイン時の値を保持する。再読み込み時の更新は未確認</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="reference"><span>保持する</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>注文詳細を開くとき</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#display" data-node="node-3" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>① ボタンの表示</b><span class="change">+ 期間を過ぎた注文にはボタンが出ず、期限切れの案内が出る</span></a>
+          <div class="diagram-node" data-node="node-4" data-kind="data" data-state="changed"><div class="diagram-meta"><span class="diagram-role">データ</span><span class="diagram-state">変更あり</span></div><b>画面が持つ設定</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-4" data-to="node-3" data-kind="data" data-role="reference"><span>期間と端末の時刻で判定</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>キャンセルを押したとき</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#cancel" data-node="node-5" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>② サーバーの判定と記録</b><span class="change">+ 出荷前で期間を過ぎていれば 422 で拒否し、何も記録しない</span></a>
+          <div class="diagram-stack">
+            <div class="diagram-node" data-node="node-6" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>注文</b><span class="body">キャンセル済みになる</span></div>
+            <div class="diagram-node" data-node="node-7" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>操作履歴、返金の依頼</b><span class="body">決済済みなら返金の記録も作る</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-5" data-to="node-6" data-kind="data" data-role="reference"><span>通過したときだけ、まとめて記録</span></span>
+        <span data-from="node-5" data-to="node-7" data-kind="data" data-role="reference"></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>キャンセルの後（自動）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-8" data-kind="process" data-state="excluded"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">対象外</span></div><b>返金の手続き</b><span class="body">返金の依頼を読み、決済サービスへ返金を依頼する。今回は変更なし</span></div>
+          <div class="diagram-node" data-node="node-9" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>返金の依頼</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-9" data-to="node-8" data-kind="data" data-role="reference"><span>依頼を読む</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>図1. 期間が関わる場面。反映は、設定を変えたときにずれる分を「設定変更の反映を確かめる」で扱う</figcaption>
+</figure>
+
+<h3 id="delegation">利用者に委ねる操作</h3>
+<p>エージェントは、<span class="who who--doer">実施者</span>として操作する。エージェントは、<span class="who who--user">利用者</span>がする操作を利用者へ依頼する。エージェントは、認証情報、外部システム、取り消せない操作を利用者に委ねる。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">委ねる操作</th><th class="table-description">この検証で当たるもの</th></tr></thead>
+<tbody>
+<tr><td class="table-description">認証情報の入力</td><td class="table-description">受注管理へのサインイン</td></tr>
+<tr><td class="table-description">外部システムへの接続と操作</td><td class="table-description">利用者が、データベースで注文日時を書き換え、契約先の設定を変える</td></tr>
+<tr><td class="table-description">取り消せない操作</td><td class="table-description">キャンセルの実行。サーバーが拒否する見込みの要求も、通ってしまえば取り消せないため利用者が送る</td></tr>
+</tbody>
+</table>
+</div>
+<p>実施者は、利用者から引き継いだ内容を結果へ記録する。</p>
+
+<h3 id="excluded">確認範囲に含めないもの</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">含めないもの</th><th class="table-description">理由</th><th class="table-description">代わりに確かめること</th></tr></thead>
+<tbody>
+<tr><td class="table-description">返金の手続き（決済サービスへの依頼）</td><td class="table-description">今回は変えない</td><td class="table-description">サーバーがキャンセルを受け付けたとき、返金の依頼が登録されるところまで確かめる</td></tr>
+<tr><td class="table-description">期限切れの案内の正式な文言</td><td class="table-description">文言をまだ決めておらず、後から決める</td><td class="table-description">ボタンが出ず、案内が出ることを確かめる。表示された文言は結果に書く</td></tr>
+<tr><td class="table-description">期間の既定値</td><td class="table-description">既定値を持たせるかをまだ判断していない</td><td class="table-description">未設定を無期限として扱う前提で確かめる</td></tr>
+<tr><td class="table-description">契約先の設定画面</td><td class="table-description">この変更の対象に含まれない</td><td class="table-description">設定値は準備で用意し、負の日数や小数などの入力制約は設定画面の検証で扱う</td></tr>
+<tr><td class="table-description">端末の時計をずらした表示</td><td class="table-description">端末の時計を変える操作を、この検証の環境では行えない</td><td class="table-description">画面を開いた後に期限を越える経路で、表示と結果のずれを確かめる</td></tr>
+</tbody>
+</table>
+</div>
+</header>
+
+<section id="detail-0" class="detail-page-panel" aria-labelledby="detail-label-0" hidden>
+<h2>検証の準備</h2>
+<p>実施者は、検証開始に必要な準備を済ませ、対応する項目を記入する。期限切れの案内の文言と各検証の結果は、実施後に記入する。</p>
+
+<!-- 書き手へ: 共通知識の選び方を今回の入力へ具体化し、実画面での確認を手順作成の記録へ残す。 -->
+<h3 id="reused-knowledge">共通操作知識の利用</h3>
+<p>共通操作手順書の「注文を選ぶ」を使い、「検証環境と対象」で確定する注文番号に一致する行から詳細を開く。詳細画面でも注文番号を照合する。この方法を現在の画面で使えるかは、次の確認欄へ記録する。</p>
+
+<h3 id="instruction-check">手順作成時の確認</h3>
+<p>次の欄は手順を具体化するための事前確認であり、本検証の合格を示すものではない。確認時点と証跡を残し、現在の環境でも前提が成立するかを実行前に確かめる。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">対象</th><th class="table-description">確認した内容</th><th class="table-description">未確認の内容と実行前の不足</th></tr></thead>
+<tbody>
+<tr><td class="table-label">契約先と注文</td><td class="table-description">契約先一覧で契約先Aのコードを確認した。<span class="blank">確認時点と証跡を記入する</span></td><td class="table-description">契約先Bと対象注文を選び、権限と各ケースの条件を確かめる。確定する値は「検証環境と対象」に記入する</td></tr>
+<tr><td class="table-label">注文詳細への経路と操作対象</td><td class="table-description"><span class="blank">ケースごとに、実画面で確認した経路、対象要素、入力条件、ダイアログと証跡を記入する</span></td><td class="table-description">操作対象を一意に決められることと、許可された操作範囲を確かめる</td></tr>
+<tr><td class="table-label">キャンセル後の結果</td><td class="table-description">事前には実行せず、本検証で観測する</td><td class="table-description">対象、入力、許可範囲、期待結果の根拠、実行時の確認方法と停止条件を確定する。結果が未観測であることと、操作方法が未定であることを区別する</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="stop-and-resume">操作を止める条件と再開</h3>
+<!-- 書き手へ: 共通の停止・再開条件を示す。期限を過ぎた場合など、特定のケースだけに適用する条件は該当手順にも記す。 -->
+<p>実施者は、各ケースで次の条件に当たれば操作を止める。停止したケースに依存する操作も進めない。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">止まる場面</th><th class="table-description">停止時に行うこと</th><th class="table-description">再開に必要なこと</th></tr></thead>
+<tbody>
+<tr><td class="table-description">必要な入力値、権限、画面を確認できない</td><td class="table-description">操作する前に止め、不足している内容を記録する</td><td class="table-description">該当ケースの前提と入力値を確認する</td></tr>
+<tr><td class="table-description">対象が見つからない、複数見つかる、表示名や画面構造が手順と違う</td><td class="table-description">探した対象と現在の画面を記録する。推測で別の対象を選ばない</td><td class="table-description">実画面で手順を確認し直し、操作対象を一意に決める</td></tr>
+<tr><td class="table-description">サインイン画面が表示される</td><td class="table-description">利用者にサインインを引き渡し、接続を維持する</td><td class="table-description">利用者の完了通知後、同じ接続で対象画面と必要な権限を確認する</td></tr>
+<tr><td class="table-description">予定外のダイアログが出る</td><td class="table-description">文言を記録し、推測で応答しない</td><td class="table-description">許可された応答と続行する手順を確認する</td></tr>
+<tr><td class="table-description">操作結果が確認できない</td><td class="table-description">現在の状態を再観察して記録し、同じ更新操作を再送しない</td><td class="table-description">操作が実行済みかを確認し、続行する手順を確定する</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="execution-record">本検証の記録</h3>
+<!-- 書き手へ: 各ケースの結果列から実施記録を参照できるようにする。実行ごとに記録を増やし、以前の結果を上書きしない。事前確認はこの欄へ合格として転記しない。 -->
+<p>各ケースの「結果」列には観測内容と判定を記入し、対応する実施記録を示す。実施記録には次を残す。まだ実施していないケースは、未実施理由と再開に必要なことを書く。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">記録する項目</th><th class="table-description">記入欄</th></tr></thead>
+<tbody>
+<tr><td class="table-label">ケースと手順</td><td class="table-description"><span class="blank">検証する場面、表の条件、実行した手順を特定する</span></td></tr>
+<tr><td class="table-label">実行の前提</td><td class="table-description"><span class="blank">実施者、実行時点、実装の版、環境、使用したデータと入力値を書く。認証情報は残さない</span></td></tr>
+<tr><td class="table-label">期待結果と観測結果</td><td class="table-description"><span class="blank">期待結果の根拠と、実際に観測した状態を分けて書く</span></td></tr>
+<tr><td class="table-label">判定と証跡</td><td class="table-description"><span class="blank">合格・不合格・判定不能・未実施と理由、証跡への参照を書く。観察だけの項目は合格件数へ含めない</span></td></tr>
+<tr><td class="table-label">停止と再開</td><td class="table-description"><span class="blank">停止理由、実行済みか不明な操作、再開前に確認する条件を書く</span></td></tr>
+<tr><td class="table-label">後始末</td><td class="table-description"><span class="blank">変更したデータと復元の状態、終了・維持・解放したアプリと接続、残件を書く。検証判定とは分ける</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="environment">検証環境と対象</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">項目</th><th class="table-description">値</th><th class="table-description">備考</th></tr></thead>
+<tbody>
+<tr><td class="k table-label">環境</td><td class="table-description"><span class="blank">実施者は、利用者から検証環境のサインインURLを受け取り、ブラウザで開けることを確かめて書く</span></td><td class="table-description">本番環境は使わない</td></tr>
+<tr><td class="k table-label">契約先A（期間あり）</td><td class="table-description"><span class="filled">契約先コード <code>TN-0042</code><span class="source">実施者は、準備の「契約先と契約先Aの注文を選ぶ」で契約先一覧を確かめた</span></span></td><td class="table-description">期間を3日に設定する契約先。すべての検証場面で使う</td></tr>
+<tr><td class="k table-label">契約先B（期間なし）</td><td class="table-description"><span class="blank">契約先一覧で、期間が未設定で、出荷前の注文を1件以上持つ契約先を1件選び、契約先コードを書く</span></td><td class="table-description">変更の前と同じ振る舞いかを確かめる基準。「ボタンの表示を確かめる」と「キャンセルの結果と記録を確かめる」で使う</td></tr>
+<tr><td class="k table-label">対象の注文</td><td class="table-description"><span class="blank">契約先Aの注文一覧で、出荷前かつ未決済の注文を4件、出荷前かつ決済済みの注文を1件、出荷済みの注文を1件選び、注文番号を書く</span></td><td class="table-description">利用者が、準備の「対象の注文の注文日時を書き換える」で注文日時を変更する。未決済の注文4は、設定変更後の表示確認用に残し、キャンセルしない</td></tr>
+<tr><td class="k table-label">契約先Bの対象注文</td><td class="table-description"><span class="blank">出荷前で注文日時が1年以内の注文を1件選び、注文番号、注文日時、決済の有無を書く</span></td><td class="table-description">表示確認とキャンセルの成功確認に使う</td></tr>
+<tr><td class="k table-label">契約先Bの操作権限</td><td class="table-description"><span class="blank">利用者に、契約先Bの対象注文を扱えるアカウントと、契約先Aとは別に使うブラウザセッションを確認して書く</span></td><td class="table-description">契約先Bへのサインインは利用者が行う。契約先Aのセッションと期限前のタブは維持する</td></tr>
+<tr><td class="k table-label">サーバー時刻の確認方法</td><td class="table-description"><span class="blank">利用者に、検証環境のサーバー現在時刻を確認する方法を教えてもらい、時刻・取得時点・タイムゾーンを書く</span></td><td class="table-description">注文日時との差から時計のずれを推測しない。方法が決まるまで期限前後の検証を始めない</td></tr>
+<tr><td class="k table-label">要求と応答の確認方法</td><td class="table-description"><span class="blank">利用者と、対象注文のキャンセル要求の状態コードと応答本文を取得する方法を確認して書く</span></td><td class="table-description">画面の文言から状態コードを推測しない。方法が決まるまで要求を送る検証を始めない</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="settings">設定</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">設定</th><th class="table-description">値</th><th class="table-description">根拠</th></tr></thead>
+<tbody>
+<tr><td class="k table-label">契約先Aの期間</td><td class="table-description"><span class="filled">3日<span class="source">利用者が、準備の「契約先Aの期間を3日に設定する」で実施者に伝えた</span></span></td><td class="table-description">設定値は <code>tenant_settings.cancel_window_days</code>。サーバーは3日を72時間として判定する</td></tr>
+<tr><td class="k table-label">契約先Bの期間</td><td class="table-description">未設定</td><td class="table-description">サーバーは、この変更より前から存在する契約先を未設定のまま無期限として扱う</td></tr>
+<tr><td class="k table-label">期限切れの案内の文言</td><td class="table-description"><span class="blank">「ボタンの表示を確かめる」で、期間を過ぎた注文の注文詳細に表示された文言をそのまま書く</span></td><td class="table-description">文言が未確定のため、コードから確定できない</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="prepare-steps">準備の手順</h3>
+<ol class="steps">
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>受注管理にサインインする</p>
+    <p class="step-body">利用者は、検証環境のサインインURLを開き、契約先Aの注文を扱えるアカウントでサインインする。</p>
+<p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、サインインした画面を実施者に渡す。</p>
+</li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>契約先と契約先Aの注文を選ぶ</p>
+    <p class="step-body">実施者は、契約先一覧で期間が未設定の契約先Bを選び、契約先Aの注文一覧で対象注文を選ぶ。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>契約先AとBのコード、契約先Aの対象注文を記入している。契約先AとBは別の契約先である。</p>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>実施者は、契約先Bのコードを利用者に伝え、操作するアカウントと別のブラウザセッションを確認する。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>別のセッションで契約先Bへサインインする</p>
+    <p class="step-body">利用者は、契約先Aとは別のブラウザセッションで、選んだ契約先Bの注文を扱えるアカウントにサインインする。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>契約先Bの注文一覧を開ける。契約先Aのセッションも残っている。</p>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、契約先Bの操作に使うセッションを実施者へ伝える。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>契約先Bの対象注文を選ぶ</p>
+    <p class="step-body">実施者は、契約先Bの注文一覧で、出荷前で注文日時が1年以内の注文を1件選び、注文番号、注文日時、決済の有無を記入する。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>表示とキャンセル成功の確認に使う注文が決まっている。対象がなければ、利用者と契約先Bの選定からやり直す。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>契約先Aの期間を3日に設定する</p>
+    <p class="step-body">利用者は、契約先の設定で、契約先ごとにキャンセルできる期間を次のとおりにする。</p>
+    <div class="table-wrap">
+    <table>
+    <thead><tr><th class="table-label">契約先</th><th class="table-label">キャンセルできる期間</th></tr></thead>
+    <tbody>
+    <tr><td class="table-label">契約先A</td><td class="table-label">3日にする</td></tr>
+    <tr><td class="table-label">契約先B</td><td class="table-label">未設定のままにする</td></tr>
+    </tbody>
+    </table>
+    </div>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、設定した値と、設定を変えた時刻を実施者に伝える。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>対象の注文の注文日時を書き換える</p>
+    <p class="step-body">利用者は、データベースで、対象の注文の注文日時を次の表のとおりに書き換える。利用者は、準備で決めた方法で確認したサーバー時刻を基準時刻として控える。未決済の注文3は、「注文日時 + 3日」がその基準時刻の10分後になるようにする。</p>
+    <div class="step-note"><span class="label">書き換える値</span>
+    <div class="table-wrap">
+    <table>
+      <tr><td class="table-label">未決済の注文1</td><td class="table-description">2日前</td></tr>
+      <tr><td class="table-label">未決済の注文2</td><td class="table-description">4日前</td></tr>
+      <tr><td class="table-label">未決済の注文3</td><td class="table-description">「注文日時 + 3日」が、書き換えに使うサーバーの基準時刻の10分後になる時刻</td></tr>
+      <tr><td class="table-label">未決済の注文4</td><td class="table-description">4日前。設定変更後の表示確認用に残し、キャンセルしない</td></tr>
+      <tr><td class="table-label">決済済みの注文</td><td class="table-description">2日前</td></tr>
+      <tr><td class="table-label">出荷済みの注文</td><td class="table-description">4日前</td></tr>
+    </table>
+    </div>
+    </div>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、書き換えた注文番号と注文日時、基準時刻、未決済の注文3の期限を実施者に伝える。</p>
+</li>
+<li><p class="step-head"><span class="who who--doer">実施者</span>設定変更後にサインアウトする</p>
+<p class="step-body">契約先Aの期間を3日に設定した後に、実施者はサインアウトする。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>サインイン画面が表示される。</p>
+</li>
+<li><p class="step-head"><span class="who who--user">利用者</span>変更後の設定でサインインする</p>
+<p class="step-body">利用者は、契約先Aの注文を扱えるアカウントでサインインする。画面がサインイン時に設定を受け取るためである。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>注文一覧を開ける。</p>
+<p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、設定変更後にサインインしたことを実施者に伝える。</p>
+</li>
+<li><p class="step-head"><span class="who who--doer">実施者</span>注文日時を確認する</p>
+<p class="step-body">実施者は、注文一覧の対象注文の日時を、利用者から伝えられた値と比べる。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>注文日時が引き継いだ値と一致する。</p>
+</li>
+</ol>
+<div class="key">
+<p>実施者は、注文日時を書き換えた注文を用意する。ただし、未決済の注文3では、期限を越えるまで待つ。実施者は、利用者から伝えられた期限より前に注文詳細を開く。期限は、準備で控えたサーバーの基準時刻の10分後である。開く前に期限を過ぎた場合は、利用者に未決済の注文3の日時を再設定してもらう。他の注文は書き換えない。</p></div>
+</section>
+
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+<h2>ボタンの表示を確かめる</h2>
+<p>注文詳細画面は、注文の状態、契約先が設定した期間、注文日時からキャンセルボタンを出すかどうかを決める。注文は、出荷済みならボタンが出ないのは今までと同じであり、期間を過ぎたらボタンが出ず、代わりに期限切れの案内が出るのが新しい。エージェントは、ここでは画面の表示だけを確かめ、押した結果は「キャンセルの結果と記録を確かめる」で確認する。</p>
+
+<h3 id="display-premise">前提</h3>
+<p>実施者は、検証の準備を終え、検証開始に必要な項目を記入している。契約先Aと契約先Bの注文は、それぞれ準備したセッションで操作する。期限切れの案内の文言と各検証の結果は、実施後に記入する。実施者は、準備の「注文日時を確認する」から続けて実施する。</p>
+
+<h3 id="display">① 条件と期待結果</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">対象の注文</th><th class="table-label">契約先の期間</th><th class="table-label">注文の状態</th><th class="table-description">注文日時</th><th class="table-description">期待結果</th><th class="table-description">結果</th></tr></thead>
+<tbody>
+<tr><td class="table-label">契約先Bの注文</td><td class="table-label">未設定</td><td class="table-label">出荷前</td><td class="table-description">1年以内の任意</td><td class="table-description">注文詳細画面がボタンを出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
+<tr><td class="table-label">未決済の注文1</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">2日前</td><td class="table-description">注文詳細画面がボタンを出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
+<tr><td class="table-label">未決済の注文2</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">4日前</td><td class="table-description">注文詳細画面がボタンを出さず、期限切れの案内を出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと、表示された案内の文言をそのまま書く</span></td></tr>
+<tr><td class="table-label">出荷済みの注文</td><td class="table-label">3日</td><td class="table-label">出荷済み</td><td class="table-description">4日前</td><td class="table-description">注文詳細画面がボタンを出さず、期限切れの案内を出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを観測したとおりに書く</span></td></tr>
+<tr><td class="table-label">未決済の注文3</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">準備で書き換えた日時。期限は基準時刻の10分後</td><td class="table-description">注文詳細画面がボタンを出す。期限を越えた後に別のタブで開くと、ボタンを出さず案内を出す</td><td class="result table-description"><span class="blank">期限の前と後で注文詳細を開き、それぞれボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
+</tbody>
+</table>
+</div>
+<p>注文詳細画面は、注文日時に日数を足した時刻が現在時刻より未来かで期間内かを判定する。期間は、3日なら72時間であり、注文日の3日後の0時ではない。期間は、日付ではなく時刻で数えるためである。注文詳細画面は、期限と同じ時刻には期限切れの案内を出す。期間が、同じ時刻を未来に含まないためである。</p>
+
+<h3 id="display-steps">手順</h3>
+<ol class="steps">
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>対象の注文の注文詳細を順に開く</p>
+    <p class="step-body">実施者は、注文一覧から、契約先Bの注文、未決済の注文1・2、出荷済みの注文を順に開き、キャンセルボタンと期限切れの案内が出るかを確かめる。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>結果は、表の期待結果のとおりになる。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>期限前の未決済の注文3を確認する</p>
+<p class="step-body">実施者は、利用者から伝えられた期限より前に、未決済の注文3の注文詳細を開く。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>キャンセルボタンが表示される。</p>
+</li>
+<li><p class="step-head"><span class="who who--doer">実施者</span>期限前に開いたタブを残す</p>
+<p class="step-body">実施者は、未決済の注文3のタブを、再読み込みせず残す。後のキャンセル要求に使うためである。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>期限前に開いたタブが残っている。</p>
+</li>
+<li><p class="step-head"><span class="who who--doer">実施者</span>別のタブで期限後の表示を確認する</p>
+<p class="step-body">実施者は、準備で確認したサーバー時刻を基に期限を越えたことを確認してから、別のタブで未決済の注文3の注文詳細を開く。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>ボタンが出ず、期限切れの案内が出る。期限前に開いたタブはそのまま残っている。</p>
+</li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>結果を書く</p>
+    <p class="step-body">実施者は、表の「結果」列に観測した状態を文で書く。実施者は、案内の文言を、設定の表の空欄にも同じ文言で書く。</p>
+  </li>
+</ol>
+
+<h3 id="display-notes">注意</h3>
+<div class="caution"><p>注文は、出荷済みかつ期間を過ぎた場合に期限切れの案内が出るかどうかが、今回の変更の内容から決まらない。エージェントは、ボタンが出ないことまでを期待結果とする。エージェントは、案内が出たかどうかを観測したとおりに書き、開発担当へ確認する。</p></div>
+</section>
+
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+<h2>キャンセルの結果と記録を確かめる</h2>
+<p>サーバーは、キャンセルを押されると注文の状態と期間を順に確かめ、両方を通過したときだけ、注文をキャンセル済みにし、操作履歴と返金の依頼を保存する。決済済みの場合は返金の記録も作る。これらはまとめて保存する。サーバーは、期間を確かめる以外は、保存する内容が今までと同じである。サーバーが要求を拒否した場合の期待結果は、注文と記録が変わらないことである。拒否した要求では何も保存しないためである。</p>
+<h3 id="cancel-premise">前提</h3>
+<p>実施者は、「ボタンの表示を確かめる」を終えている。未決済の注文3は、「期限前に開いたタブを残す」で期限の前に開いたタブが残っている。利用者が、キャンセルをすべて実行する。キャンセルが取り消せないためである。</p>
+
+<h3 id="cancel">② 条件と期待結果</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">対象の注文</th><th class="table-description">前提</th><th class="table-description">応答</th><th class="table-description">画面</th><th class="table-description">保存されるもの</th><th class="table-description">結果</th></tr></thead>
+<tbody>
+<tr><td class="table-label">未決済の注文1</td><td class="table-description">期間内、出荷前、未決済</td><td class="table-description"><code>200</code></td><td class="table-description">画面が「キャンセルしました」と表示し、一覧へ戻る</td><td class="table-description">注文がキャンセル済み、操作履歴、返金の依頼。返金の記録は作られない</td><td class="result table-description"><span class="blank">画面の表示と注文の状態に加え、操作前後で操作履歴と返金の依頼の件数がどう変わったかを書く</span></td></tr>
+<tr><td class="table-label">決済済みの注文</td><td class="table-description">期間内、出荷前、決済済み</td><td class="table-description"><code>200</code></td><td class="table-description">同上</td><td class="table-description">上に加えて、返金の記録（金額、手続き待ち）</td><td class="result table-description"><span class="blank">上と同じ項目に加えて、返金の記録の金額と状態を書く</span></td></tr>
+<tr><td class="table-label">契約先Bの注文</td><td class="table-description">未設定の契約先、出荷前</td><td class="table-description"><code>200</code></td><td class="table-description">同上</td><td class="table-description">決済の有無に応じて上と同じ</td><td class="result table-description"><span class="blank">画面の表示と注文の状態に加え、操作前後で記録の件数がどう変わったかを書く</span></td></tr>
+<tr><td class="table-label">未決済の注文3</td><td class="table-description">利用者が、ボタンが出ている画面で期限を越えてから押す</td><td class="table-description"><code>422</code>、reason は <code>cancel_window_exceeded</code></td><td class="undetermined table-description">定めない</td><td class="table-description">なし。注文の内容は変わらず、返金の記録、操作履歴、返金の依頼はいずれも追加されない</td><td class="result table-description"><span class="blank">画面に表示された内容をそのまま書き、注文詳細の状態と記録の件数が変わっていないことを書く</span></td></tr>
+<tr><td class="table-label">出荷済みの注文</td><td class="table-description">期間を過ぎた、出荷済み</td><td class="table-description"><code>409</code></td><td class="table-description">「出荷済みのため取り消せません」</td><td class="table-description">なし</td><td class="result table-description"><span class="blank">利用者から伝えられた応答と、注文詳細の状態が変わっていないことを書く</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="cancel-steps">手順</h3>
+<ol class="steps">
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>注文の状態と記録を控える</p>
+    <p class="step-body">実施者は、キャンセルの前に、対象の注文ごとに注文の状態、操作履歴の件数、返金の記録があるか、返金の依頼の件数を注文詳細で確かめて控える。</p>
+    <p class="step-note"><span class="label">この手順が要る理由</span>サーバーは、要求を拒否した場合は何も保存しない。実施者は、操作前後の注文の状態と記録を比べて、変更がないことを確かめる。実施者は、期限切れで拒否された件数を後から数えられない。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>未決済の注文1の詳細を開く</p>
+    <p class="step-body">利用者は、未決済の注文1の注文詳細を開く。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>表示された注文番号が、準備で控えた未決済の注文1の番号と一致する。</p>
+    <p class="step-note"><span class="label">続行条件</span>実施者が注文番号の一致を確認してから、キャンセルの操作へ進む。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>未決済の注文1をキャンセルする</p>
+    <p class="step-body">利用者は、未決済の注文1の注文詳細でキャンセルボタンを押す。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>応答と画面の表示は、「条件と期待結果」の未決済の注文1の行に記載したとおりになる。</p>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、準備で確認した方法で要求の応答を取得し、押した順序、注文番号、状態コード、応答本文、画面に表示された内容を実施者に伝える。</p>
+    <p class="step-note"><span class="label">停止条件</span>実施者は、応答と表示を期待結果と照合する。異なる場合は、その注文の観測結果を残して操作を止める。停止したケースに依存する操作も進めない。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>決済済みの注文の詳細を開く</p>
+    <p class="step-body">利用者は、決済済みの注文の注文詳細を開く。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>表示された注文番号が、準備で控えた決済済みの注文の番号と一致する。</p>
+    <p class="step-note"><span class="label">続行条件</span>実施者が注文番号の一致を確認してから、キャンセルの操作へ進む。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>決済済みの注文をキャンセルする</p>
+    <p class="step-body">利用者は、決済済みの注文の注文詳細でキャンセルボタンを押す。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>応答と画面の表示は、「条件と期待結果」の決済済みの注文の行に記載したとおりになる。</p>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、準備で確認した方法で要求の応答を取得し、押した順序、注文番号、状態コード、応答本文、画面に表示された内容を実施者に伝える。</p>
+    <p class="step-note"><span class="label">停止条件</span>実施者は、応答と表示を期待結果と照合する。異なる場合は、その注文の観測結果を残して操作を止める。停止したケースに依存する操作も進めない。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>契約先Bの注文の詳細を開く</p>
+    <p class="step-body">利用者は、契約先Bの注文の注文詳細を開く。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>表示された注文番号が、準備で控えた契約先Bの注文の番号と一致する。</p>
+    <p class="step-note"><span class="label">続行条件</span>実施者が注文番号の一致を確認してから、キャンセルの操作へ進む。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>契約先Bの注文をキャンセルする</p>
+    <p class="step-body">利用者は、契約先Bの注文の注文詳細でキャンセルボタンを押す。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>応答と画面の表示は、「条件と期待結果」の契約先Bの注文の行に記載したとおりになる。</p>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、準備で確認した方法で要求の応答を取得し、押した順序、注文番号、状態コード、応答本文、画面に表示された内容を実施者に伝える。</p>
+    <p class="step-note"><span class="label">停止条件</span>実施者は、応答と表示を期待結果と照合する。異なる場合は、その注文の観測結果を残して操作を止める。停止したケースに依存する操作も進めない。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>期限を越えてから未決済の注文3をキャンセルする</p>
+    <p class="step-body">利用者は、「期限前に開いたタブを残す」で残したタブで、準備で確認したサーバー時刻を基に期限を越えたことを確かめてから、再読み込みせずにキャンセルボタンを押す。</p>
+<p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、押した時刻、状態コード、応答本文、画面に表示された内容を実施者に伝える。応答は準備で確認した方法で取得する。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>出荷済みの注文へキャンセル要求を直接送る</p>
+    <p class="step-body">利用者は、<code>POST /orders/:id/cancel</code> を直接送る。ボタンが出荷済みの注文には出ないためである。</p>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、応答の状態コードと本文を実施者に伝える。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>状態と記録を確かめる</p>
+    <p class="step-body">実施者は、対象の注文ごとに注文詳細を開き、注文の状態、操作履歴の件数、返金の記録、返金の依頼の件数を「注文の状態と記録を控える」で残した控えと比べる。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>結果は、表の「保存されるもの」のとおりになる。サーバーが拒否した要求の注文の状態と記録は、「注文の状態と記録を控える」で残した控えから変わっていない。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>結果を書く</p>
+    <p class="step-body">実施者は、利用者から伝えられた内容と自分で確かめた内容を、表の「結果」列に書く。</p>
+  </li>
+</ol>
+
+<h3 id="cancel-notes">注意</h3>
+<div class="caution"><p>画面は、<code>422</code> を受けたときに何を表示するかは、今回の変更に含まれていない。エージェントは、エラーで操作できなくならないことと、注文が変わっていないことを確かめる。エージェントは、表示された内容を結果に書き、開発担当へ確認する。</p></div>
+<div class="caution"><p>サーバー側の同時刻の境界条件は、差分から確定できない。未決済の注文3では、期限前に残したタブにボタンがあっても、期限後の要求が422で拒否されることを確かめる。表示の比較には、期限後に別のタブで開いた注文詳細を使う。この手順では、期限と完全に同じ時刻の判定までは確認できない。その境界は別の検証として残す。</p></div>
+</section>
+
+<section id="detail-3" class="detail-page-panel" aria-labelledby="detail-label-3" hidden>
+<h2>設定変更の反映を確かめる</h2>
+<p>期間は、契約先で変えたとき、画面とサーバーで反映される時点が違う。画面は、サインイン時に受け取った日数を保持し、その値でボタンの表示を判定する。設定を再取得するまでは変更前の期間を使う。サインインし直すと設定を取り直す。再読み込み時に設定を取り直すかは未確認である。サーバーは、変更直後の要求から新しい期間で判定する。サーバーが、要求ごとに設定を読むためである。エージェントは、変更前の設定を保持している場合の表示差と、再読み込み後に観測した表示を区別して記録する。サインインし直した後は、変更後の期間でボタンが表示されることを確かめる。</p>
+<h3 id="settings-premise">前提</h3>
+<p>実施者は、「キャンセルの結果と記録を確かめる」を終えている。未決済の注文2と未決済の注文4は、いずれも出荷前・未決済・4日前の注文で、キャンセルされていない。未決済の注文2は要求を直接送る検証に使い、未決済の注文4は再サインイン前後の表示確認に使う。期間は、契約先Aでは3日である。実施者は、期間を7日に変える間、サインインを続ける。</p>
+
+<h3 id="settings-change">③ 条件と期待結果</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">期間の変更</th><th class="table-description">サインイン</th><th class="table-description">対象の注文</th><th class="table-description">ボタンの表示</th><th class="table-description">押した結果</th><th class="table-description">結果</th></tr></thead>
+<tbody>
+<tr><td class="table-label">3日 → 7日</td><td class="table-description">変更前にサインインしたまま、設定を再取得していない場合</td><td class="table-description">未決済の注文2（4日前）</td><td class="table-description">画面が変更前の期間で判定し、ボタンを出さずに期限切れを案内する</td><td class="table-description">押せない。直接送れば <code>200</code></td><td class="result table-description"><span class="blank">注文詳細にボタンがあるかを書く。要求を直接送ったときの応答は、利用者が伝えた内容を書く</span></td></tr>
+<tr><td class="table-label">3日 → 7日</td><td class="table-description">変更前にサインインしたまま、設定を再取得していない場合</td><td class="table-description">未決済の注文4（4日前）</td><td class="table-description">画面が変更前の期間で判定し、ボタンを出さずに期限切れを案内する</td><td class="table-description">検証しない。表示確認用に残し、要求を送らない</td><td class="result table-description"><span class="blank">サインインし直す前の注文の状態、ボタンと案内の有無を書く</span></td></tr>
+<tr><td class="table-label">3日 → 7日</td><td class="table-description">変更後にサインインし直した</td><td class="table-description">未決済の注文4（4日前）</td><td class="table-description">画面が変更後の期間で判定し、ボタンを出す</td><td class="table-description">検証しない。表示のみ確認する</td><td class="result table-description"><span class="blank">サインインし直した後の注文の状態とボタンの有無を記録し、再サインイン前の表示と比べる</span></td></tr>
+</tbody>
+</table>
+</div>
+<p>出荷前で変更前は期間外、変更後は期間内となる注文では、画面が変更前の設定を保持している間、サーバーが受け付けられてもボタンが出ない。この条件での表示差は想定した動作である。</p>
+
+<h3 id="settings-steps">手順</h3>
+<ol class="steps">
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>契約先Aの期間を7日に変える</p>
+    <p class="step-body">利用者は、契約先の設定で、契約先Aのキャンセルできる期間を7日にする。</p>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、変えた時刻を実施者に伝える。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>再読み込み後の表示を記録する</p>
+    <p class="step-body">実施者は、未決済の注文2と未決済の注文4の注文詳細をそれぞれ再読み込みし、注文の状態と、ボタンと案内の有無を記録する。</p>
+    <p class="step-note step-note--expect"><span class="label">期待結果</span>未決済の注文2と未決済の注文4は、どちらもキャンセルされていない。</p>
+    <p class="step-note"><span class="label">観察して記録すること</span>再読み込み後のボタンと案内の有無を記録する。この表示には期待結果を定めず、合否を付けない。</p>
+    <p class="step-note"><span class="label">条件付きの表示</span>設定を再取得していなければ、ボタンは表示されず、期限切れの案内が表示される。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--user">利用者</span>未決済の注文2へキャンセル要求を直接送る</p>
+    <p class="step-body">利用者は、<code>POST /orders/:id/cancel</code> を直接送る。</p>
+    <p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、応答の状態コードを実施者に伝える。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>表示比較のためサインアウトする</p>
+<p class="step-body">実施者は、再読み込み後の表示を記録してから、サインアウトする。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>サインイン画面が表示される。</p>
+</li>
+<li><p class="step-head"><span class="who who--user">利用者</span>7日の設定を受け取るためサインインする</p>
+<p class="step-body">利用者は、契約先Aの注文を扱えるアカウントでサインインする。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>注文一覧を開ける。</p>
+<p class="step-note step-note--handoff"><span class="label">引き継ぎ</span>利用者は、7日への設定変更後にサインインしたことを実施者に伝える。</p>
+</li>
+<li><p class="step-head"><span class="who who--doer">実施者</span>未決済の注文4の表示を比較する</p>
+<p class="step-body">実施者は、未決済の注文4の注文詳細を開き、注文の状態とボタンの有無を再サインイン前の記録と比べる。キャンセルボタンは押さない。</p>
+<p class="step-note step-note--expect"><span class="label">期待結果</span>注文はキャンセルされておらず、7日の期間で判定され、ボタンが出る。</p>
+  </li>
+  <li>
+    <p class="step-head"><span class="who who--doer">実施者</span>結果を記録する</p>
+    <p class="step-body">実施者は、表の「結果」列を埋める。実施者は、埋められなかった欄に、取得できなかった理由を書く。</p>
+  </li>
+</ol>
+
+<h3 id="settings-notes">注意</h3>
+<div class="caution"><p>対象は、サインインし直さずに画面が持つ期間を更新する方法を含まない。画面がページを再読み込みしたときに期間を取り直すかは、差分から確定できない。エージェントは、「再読み込み後の表示を記録する」で再読み込み後のボタンと案内の有無を記録し、設定を取り直したかを開発担当へ確認する。表示の有無だけで合否を決めない。</p></div>
+</section>
+</main>
+</div>
+
+</div>
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>

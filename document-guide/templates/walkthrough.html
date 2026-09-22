@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文のキャンセルに期限を設ける</title>
+<link rel="stylesheet" href="common.css">
+<script src="flow.js" defer></script>
+</head>
+<body>
+<div class="doc">
+
+<div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="詳細">
+  <p class="detail-page-navigation-label">目次</p>
+  <button id="detail-label-overview" class="detail-page-navigation-item" type="button" aria-current="true" aria-controls="detail-overview">概要</button>
+  <button id="detail-label-1" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-1"><span class="detail-page-navigation-number">01</span><span>サインイン時の設定取得と保持</span></button>
+  <button id="detail-label-2" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-2"><span class="detail-page-navigation-number">02</span><span>注文詳細のキャンセルボタン</span></button>
+  <button id="detail-label-3" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-3"><span class="detail-page-navigation-number">03</span><span>キャンセル要求の処理</span></button>
+</nav>
+
+<main class="detail-page-content">
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+<div class="detail-page-hero">
+  <p class="eyebrow">受注管理 › 注文キャンセル › コードウォークスルー</p>
+  <h1>注文のキャンセルに期限を設ける</h1>
+  <p class="sub">契約先の設定にキャンセル可能日数を追加する。仕様では、注文日時に設定日数を足した期限に達した注文をキャンセルできなくする。設定の取得、画面のボタン表示、サーバーの要求処理を説明する。</p>
+</div>
+<p class="code-ref">対象: server/src/orders, server/src/session, client/src</p>
+
+<p>受注管理が今回の対象である。利用者は、注文詳細画面からキャンセルを要求する。サーバーは、注文の状態を確かめてから状態を <code>canceled</code> に更新する。サーバーは、操作履歴と返金の依頼を注文の更新と同じトランザクションで書く。決済済みなら、返金の記録も同じトランザクションで作る。注文は、これまでは出荷済みでなければいつでもキャンセルできた。</p>
+<p>契約先は、キャンセル可能日数を持つ。期限を過ぎた注文は、次のように扱う。</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">場所</th><th class="table-description">期限を過ぎた注文の扱い</th></tr></thead>
+<tbody>
+<tr><td class="table-label">注文詳細</td><td class="table-description">キャンセルボタンを出さない</td></tr>
+<tr><td class="table-label">サーバー</td><td class="table-description">出荷済みなら409、それ以外で期限切れと判定した場合は422で拒否する</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>ストアは、サインイン直後に1回だけ受け取った可能日数を保持する。サーバーは、要求ごとに設定から日数を読む。</p>
+
+<!-- 書き手へ: 番号①②③は、読み手が別々に選んで読む入口ごとに付き、本文の見出しと揃う。図は、行の間に順序を表す矢印を持たない。書き手は、図の読み方を本文と題に書かない。読み手が図から入口の節へ直接移るためである。 -->
+<figure class="diagram">
+  <div class="diagram-legend"><span class="existing">変わらない処理</span><span class="changed">変更箇所</span><span class="excluded">この文書では扱わない</span></div>
+  <section class="diagram-scene">
+    <h3>サインイン直後（利用者の操作はない）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#session" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>① SessionController.get</b><span class="change">+ cancelWindowDays を応答に含める</span></a>
+          <div class="diagram-node" data-node="node-2" data-kind="data" data-state="changed"><div class="diagram-meta"><span class="diagram-role">データ</span><span class="diagram-state">変更あり</span></div><b>SessionStore</b><span class="body">tenantId, permissions</span><span class="change">+ cancelWindowDays</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="reference"><span>応答を保持</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>注文詳細を開くとき</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#detail" data-node="node-3" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>② OrderDetail.tsx</b><span class="change">+ 期限を過ぎていればボタンを出さない</span></a>
+          <div class="diagram-node" data-node="node-4" data-kind="data" data-state="changed"><div class="diagram-meta"><span class="diagram-role">データ</span><span class="diagram-state">変更あり</span></div><b>SessionStore</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-4" data-to="node-3" data-kind="data" data-role="reference"><span>読む</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>キャンセルを押したとき</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#cancel" data-node="node-5" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>③ OrderCancelService.cancel</b><span class="change">+ 出荷済みでなく、期限切れと判定した場合は422</span></a>
+          <div class="diagram-stack">
+            <div class="diagram-node" data-node="node-6" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>orders</b><span class="body">status を canceled に</span></div>
+            <div class="diagram-node" data-node="node-7" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>audit_logs, outbox</b><span class="body">決済済みの場合は refunds も保存</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-5" data-to="node-6" data-kind="data" data-role="reference"><span>1つのトランザクションで書く</span></span>
+        <span data-from="node-5" data-to="node-7" data-kind="data" data-role="reference"></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>コミット後（非同期）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-8" data-kind="process" data-state="excluded"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">対象外</span></div><b>RefundWorker.run</b><span class="body">outbox を読んで決済サービスへ返金を依頼する。この差分では変更なし</span></div>
+          <div class="diagram-node" data-node="node-9" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>outbox</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-9" data-to="node-8" data-kind="data" data-role="reference"><span>読む</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>図1. 可能日数を使う時点と、コミット後の返金ジョブ</figcaption>
+</figure>
+
+<div class="key"><p>ストアは、サインイン時の可能日数を保持し続ける。対象ファイルには、可能日数を取り直す処理がない。画面は、設定を変えた後も、サインインし直すまで古い日数でボタン表示を決める。サーバーは、要求ごとに読んだ設定で <code>CancelPolicy.withinWindow</code> を呼び、受付可否を判断する。Policy本体がないため、期限の境界と未設定時の判定が仕様どおりかは未確認である。</p></div>
+</header>
+
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+<h2>サインイン時の設定取得と保持</h2>
+<p>クライアントは、サインイン直後に <code>GET /session</code> を1回だけ呼ぶ。応答は契約先の設定をまとめ、<code>cancelWindowDays</code> が応答へ加わる。クライアントは応答をそのまま <code>SessionStore</code> に置き、画面は後で開くときに <code>SessionStore</code> を読む。</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">項目</th><th class="table-description">値の由来</th><th class="table-description">この変更で変わる箇所</th></tr></thead>
+<tbody>
+<tr><td class="k table-label">tenantId, permissions</td><td class="table-description">セッションが持つ契約先と、利用者が持つ権限</td><td class="table-description">サーバーは変えない</td></tr>
+<tr><td class="k table-label">cancelWindowDays</td><td class="table-description">契約先の設定 <code>tenant_settings.cancel_window_days</code>。未設定なら <code>null</code></td><td class="table-description">新規。サーバーが応答へ追加し、クライアントがストアへ置く</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="session">① 応答に cancelWindowDays を含める</h3>
+<p class="code-ref">server/src/session/SessionController.ts — get</p>
+<pre class="diff"><code>export async function get(req: Request, res: Response) {
+  const tenant = await TenantRepository.findWithSettings(req.session.tenantId);
+  res.json({
+    tenantId: tenant.id,
+    permissions: req.session.permissions,
+<span class="add">+    cancelWindowDays: tenant.settings.cancelWindowDays ?? null,</span>
+  });
+}</code></pre>
+<p class="code-ref">client/src/store/SessionStore.ts</p>
+<pre class="diff"><code>type State = {
+  tenantId: string | null;
+  permissions: string[];
+<span class="add">+  cancelWindowDays: number | null;</span>
+};
+
+export const SessionStore = {
+  replace(payload: SessionPayload) {
+    state.tenantId = payload.tenantId;
+    state.permissions = payload.permissions;
+<span class="add">+    state.cancelWindowDays = payload.cancelWindowDays;</span>
+  },
+<span class="add">+  cancelWindowDays() {</span>
+<span class="add">+    return state.cancelWindowDays;</span>
+<span class="add">+  },</span>
+};</code></pre>
+<div class="key"><p>仕様では、<code>cancelWindowDays</code> が <code>null</code> なら期限を設けない。既存の契約先で日数が未設定なら <code>null</code> になるため、従来どおり出荷前の注文をキャンセルできることを求める。サーバー側の未設定時の判定は、Policy本体で確認する必要がある。</p></div>
+</section>
+
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+<h2>注文詳細のキャンセルボタン</h2>
+<p>注文詳細は、注文の状態とストアの可能日数からボタンを出すかを決める。</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">注文の状態</th><th class="table-description">注文詳細が出すもの</th></tr></thead>
+<tbody>
+<tr><td class="table-label">出荷済み</td><td class="table-description">今までどおりボタンを出さない</td></tr>
+<tr><td class="table-label">期限を過ぎた</td><td class="table-description">ボタンの代わりに期限切れの表示を出す</td></tr>
+</tbody>
+</table>
+</div>
+
+<figure class="diagram">
+  <div class="diagram-legend"><span class="existing">変わらない処理</span><span class="changed">変更箇所</span></div>
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#detail" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>② OrderDetail.tsx</b><small>client/src/features/orders/OrderDetail.tsx</small></a>
+          <div class="diagram-node" data-node="node-2" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>SessionStore</b><span class="body">サインイン時の値</span></div>
+        </div>
+        <div class="diagram-options">
+          <div class="diagram-node" data-node="node-3" data-kind="end" data-state="existing"><div class="diagram-meta"><span class="diagram-role">終了</span></div><span class="cond">出荷済み</span><b>ボタンを出さない</b><small>変わらない</small></div>
+          <div class="diagram-node" data-node="node-4" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><span class="cond">出荷済みでない、かつ<br>（期限内または期限なし）</span><b>ボタンを出す</b><span class="change">日数が null、または placedAt + 日数 が未来</span></div>
+          <div class="diagram-node" data-node="node-5" data-kind="end" data-state="changed"><div class="diagram-meta"><span class="diagram-role">終了</span><span class="diagram-state">変更あり</span></div><span class="cond">期限切れ</span><b>「キャンセル期限を過ぎています」を出す</b><small>新規</small></div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-6" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderClient.cancel</b><small>client/src/features/orders/OrderClient.ts</small></div>
+          <div class="diagram-node" data-node="node-7" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>③ キャンセル要求の受付</b><span class="body">次の説明単位</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-2" data-to="node-1" data-kind="data" data-role="reference"><span>cancelWindowDays を読む</span></span>
+        <span data-from="node-1" data-to="node-3" data-kind="control" data-role="branch"></span>
+        <span data-from="node-1" data-to="node-4" data-kind="control" data-role="branch"></span>
+        <span data-from="node-1" data-to="node-5" data-kind="control" data-role="branch"></span>
+        <span data-from="node-6" data-to="node-7" data-kind="call" data-role="sequence"><span>POST /orders/:id/cancel</span></span>
+        <span data-from="node-4" data-to="node-6" data-kind="control" data-role="sequence"><span>利用者がボタンを押す</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>図2. 出荷状態と期限によるボタン表示と、ボタンから送るキャンセル要求</figcaption>
+</figure>
+
+<h3 id="detail">② 期限を過ぎた注文にはボタンを出さない</h3>
+<p class="code-ref">client/src/features/orders/OrderDetail.tsx</p>
+<pre class="diff"><code>const order = OrderStore.current();
+<span class="del">-const canCancel = order.status !== 'shipped';</span>
+<span class="add">+const windowExceeded =</span>
+<span class="add">+  !withinCancelWindow(order.placedAt, SessionStore.cancelWindowDays(), Date.now());</span>
+<span class="add">+const canCancel = order.status !== 'shipped' &amp;&amp; !windowExceeded;</span></code></pre>
+<p class="code-ref">client/src/features/orders/cancelWindow.ts（新規）</p>
+<pre><code>export function withinCancelWindow(placedAt: string, days: number | null, now: number) {
+  if (days === null) return true;
+  return new Date(placedAt).getTime() + days * DAY_MS &gt; now;
+}</code></pre>
+<div class="key"><p>画面は、利用者の端末の時計とサインイン時に受け取った日数で判定する。この判定は表示の出し分けに使う。要求を受け付けるかはサーバーが決める。サーバー側の期限判定が画面と同じ条件かは、Policy本体がないため確認できていない。</p></div>
+<div class="caution"><p>画面は、サインイン中に可能日数が変わっても、サインイン時の値で判定し続ける。この差分は、期間内と表示された注文がサーバーで 422 になるときの画面表示を含まない。</p></div>
+</section>
+
+<section id="detail-3" class="detail-page-panel" aria-labelledby="detail-label-3" hidden>
+<h2>キャンセル要求の処理</h2>
+<p>入口は <code>POST /orders/:id/cancel</code> である。サーバーは、判定の結果ごとに次のように応じる。</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">判定の結果</th><th class="table-description">サーバーがすること</th></tr></thead>
+<tbody>
+<tr><td class="table-description">出荷済み</td><td class="table-description">409 を返す</td></tr>
+<tr><td class="table-description">出荷済みでなく、期限切れと判定した</td><td class="table-description">422 を返す</td></tr>
+<tr><td class="table-description">両方の判定を通過した</td><td class="table-description">注文の状態、操作履歴、返金の依頼用の outbox を1つのトランザクションで保存する。決済済みの場合は返金額を計算し、返金の記録も同じトランザクションで保存する</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>返金ジョブは、コミット後に outbox を読む。</p>
+
+<figure class="diagram">
+  <div class="diagram-legend"><span class="existing">変わらない処理</span><span class="changed">変更箇所</span><span class="excluded">この文書では扱わない</span></div>
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#cancel" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>③ OrderCancelService.cancel</b><small>server/src/orders/OrderCancelService.ts</small></a>
+          <div class="diagram-node" data-node="node-2" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>orders</b><span class="body">status, placed_at, paid_at</span></div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-3" data-kind="decision" data-state="existing"><div class="diagram-meta"><span class="diagram-role">判定</span></div><b>状態の検査</b><span class="body">shipped なら止める</span></div>
+          <div class="diagram-node" data-node="node-4" data-kind="end" data-state="existing"><div class="diagram-meta"><span class="diagram-role">終了</span></div><b>409 を返す</b><small>変わらない</small></div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-5" data-kind="decision" data-state="changed"><div class="diagram-meta"><span class="diagram-role">判定</span><span class="diagram-state">変更あり</span></div><b>期限の検査</b><span class="change">+ CancelPolicy.withinWindow が false なら止める</span></div>
+          <div class="diagram-node" data-node="node-6" data-kind="end" data-state="changed"><div class="diagram-meta"><span class="diagram-role">終了</span><span class="diagram-state">変更あり</span></div><b>422 を返す</b><small>新規</small></div>
+        </div>
+        <div class="diagram-row single">
+        <div class="diagram-node" data-node="payment" data-kind="decision" data-state="existing"><div class="diagram-meta"><span class="diagram-role">判定</span></div><b>決済済みかを確かめる</b></div>
+      </div>
+      <div class="diagram-row">
+          <div class="diagram-node" data-node="node-7" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><span class="cond">決済済み</span><b>返金額を計算</b><small>RefundCalculator.forOrder</small></div>
+          <div class="diagram-node" data-node="node-8" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><span class="cond">未決済</span><b>返金なし</b><small>refund = null</small></div>
+        </div>
+        <section class="diagram-group" data-node="group-9">
+          <h4>1つのトランザクションで順に書く（この差分では変更なし）</h4>
+          <div class="diagram-layout">
+            <div class="diagram-row">
+              <div class="diagram-node" data-node="node-10" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderRepository.markCanceled</b></div>
+              <div class="diagram-node" data-node="node-11" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>orders</b></div>
+            </div>
+            <div class="diagram-row">
+              <div class="diagram-node" data-node="node-12" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>RefundRepository.insert</b><small>返金額がある場合だけ</small></div>
+              <div class="diagram-node" data-node="node-13" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>refunds</b><span class="body">order_id, amount, status = pending</span></div>
+            </div>
+            <div class="diagram-row">
+              <div class="diagram-node" data-node="node-14" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>AuditLogRepository.insert</b></div>
+              <div class="diagram-node" data-node="node-15" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>audit_logs</b></div>
+            </div>
+            <div class="diagram-row">
+              <div class="diagram-node" data-node="node-16" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OutboxRepository.insert</b></div>
+              <div class="diagram-node" data-node="node-17" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>outbox</b><span class="body">コミット後にジョブが読む</span></div>
+            </div>
+          </div>
+        </section>
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-18" data-kind="screen" data-state="existing"><div class="diagram-meta"><span class="diagram-role">画面</span></div><b>200 を返す</b></div>
+          <div class="diagram-node" data-node="node-19" data-kind="end" data-state="existing"><div class="diagram-meta"><span class="diagram-role">終了</span></div><b>OrderDetail.tsx</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-5" data-to="payment" data-kind="control" data-role="sequence">期限の確認を通過</span>
+        <span data-from="node-2" data-to="node-1" data-kind="data" data-role="reference"><span>findForTenant で読む</span></span>
+        <span data-from="node-3" data-to="node-4" data-kind="control" data-role="branch"><span>出荷済み</span></span>
+        <span data-from="node-1" data-to="node-3" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-5" data-to="node-6" data-kind="control" data-role="branch"><span>期限切れ</span></span>
+        <span data-from="node-3" data-to="node-5" data-kind="control" data-role="sequence"><span>shipped 以外</span></span>
+        <span data-from="payment" data-to="node-7" data-kind="control" data-role="branch"></span>
+        <span data-from="payment" data-to="node-8" data-kind="control" data-role="branch"></span>
+        <span data-from="node-7" data-to="group-9" data-kind="control" data-role="merge"><span>db.transaction</span></span>
+        <span data-from="node-8" data-to="group-9" data-kind="control" data-role="merge"></span>
+        <span data-from="node-10" data-to="node-11" data-kind="data" data-role="reference"><span>status = canceled</span></span>
+        <span data-from="node-12" data-to="node-13" data-kind="data" data-role="reference"><span>挿入</span></span>
+        <span data-from="node-10" data-to="node-12" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-14" data-to="node-15" data-kind="data" data-role="reference"><span>order.canceled</span></span>
+        <span data-from="node-12" data-to="node-14" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-16" data-to="node-17" data-kind="data" data-role="reference"><span>refund.requested</span></span>
+        <span data-from="node-14" data-to="node-16" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-18" data-to="node-19" data-kind="call" data-role="sequence"><span>画面は一覧へ戻る</span></span>
+        <span data-from="group-9" data-to="node-18" data-kind="control" data-role="sequence"><span>コミット</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>コミット後（このリクエストの外）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-20" data-kind="process" data-state="excluded"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">対象外</span></div><b>RefundWorker.run</b><span class="body">outbox を読み、決済サービスへ返金を依頼する</span></div>
+          <div class="diagram-node" data-node="node-21" data-kind="external" data-state="excluded"><div class="diagram-meta"><span class="diagram-role">外部</span><span class="diagram-state">対象外</span></div><b>決済サービス</b><span class="body">外部</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-20" data-to="node-21" data-kind="call" data-role="sequence"><span>返金を依頼</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>図3. 出荷状態と期限による拒否、決済状態による返金額の計算、受付時の保存</figcaption>
+</figure>
+
+<h3 id="cancel">③ 出荷済みでなく、期限切れと判定した要求を422で拒否する</h3>
+<p>サーバーは、既存の出荷済み判定の直後に期限を判定する。日数は、要求ごとに読む契約先の設定から <code>CancelPolicy.withinWindow</code> へ渡す。基準時刻は <code>now()</code> が返すサーバーのUTC時刻である。<code>null</code> の扱いはPolicy本体で確認する必要がある。</p>
+<p class="code-ref">server/src/orders/OrderCancelService.ts — cancel</p>
+<pre class="diff"><code>export async function cancel(orderId: string, tenant: TenantContext, actorId: string) {
+  const order = await OrderRepository.findForTenant(orderId, tenant.id);
+  if (order.status === 'shipped') {
+    throw new OrderNotCancelable('shipped');
+  }
+<span class="add">+  if (!CancelPolicy.withinWindow(order.placedAt, tenant.settings.cancelWindowDays, now())) {</span>
+<span class="add">+    throw new CancelWindowExceeded(order.placedAt, tenant.settings.cancelWindowDays);</span>
+<span class="add">+  }</span>
+  const refund = order.paidAt ? RefundCalculator.forOrder(order) : null;
+  return db.transaction(async (tx) =&gt; {
+    await OrderRepository.markCanceled(tx, order.id);
+    if (refund) await RefundRepository.insert(tx, { orderId: order.id, amount: refund.amount, status: 'pending' });
+    await AuditLogRepository.insert(tx, { action: 'order.canceled', targetId: order.id, actorId });
+    await OutboxRepository.insert(tx, { type: 'refund.requested', payload: { orderId: order.id } });
+  });
+}</code></pre>
+<p class="code-ref">server/src/orders/OrderCancelController.ts — cancel</p>
+<pre class="diff"><code>  } catch (error) {
+    if (error instanceof OrderNotCancelable) return res.status(409).json({ reason: error.reason });
+<span class="add">+    if (error instanceof CancelWindowExceeded) return res.status(422).json({ reason: 'cancel_window_exceeded' });</span>
+    throw error;
+  }</code></pre>
+<div class="key"><p>サーバーは、トランザクションを始める前に期限を判定し、拒否した場合は何も保存しない。拒否した要求は操作履歴にも残らないため、この操作履歴から期限切れで拒否した件数を数えることはできない。</p></div>
+<div class="caution"><p><code>CancelPolicy.withinWindow</code> の本体は対象の差分に含まれていない。未設定を無期限とするか、期限と同時刻を期限切れとするか、クライアント側の <code>withinCancelWindow</code> と同じ条件かは未確認である。</p></div>
+<p>サーバーは、未決済でも outbox に行を挿入する。返金ジョブは、返金の記録がない場合は何もしない。返金ジョブ本体は今回の確認範囲に含めない。</p>
+</section>
+</main>
+</div>
+
+</div>
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>

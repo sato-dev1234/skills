@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文のキャンセル期限のコメントレビュー</title>
+<link rel="stylesheet" href="common.css">
+<style>
+.review-note { font-size:12.5px; color:var(--ink-2); }
+  .review-observation { border-left:3px solid var(--warn); background:var(--warn-soft); padding:16px 20px; margin:20px 0; }
+  .review-observation h4 { font-family:var(--font-heading); font-size:16px; line-height:1.55; margin:0 0 10px; }
+  .review-observation p:last-child, .review-observation pre:last-child { margin-bottom:0; }
+  .observation-label { color:var(--warn); font-size:12px; margin-bottom:6px; }
+  td code, p code { overflow-wrap:anywhere; }
+  .detail-page-overview > h2 { margin-top:28px; }
+  @media print { .review-observation { break-inside:avoid; -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style>
+<script src="flow.js" defer></script>
+</head>
+<body>
+<div class="doc"><div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="処理単位">
+  <p class="detail-page-navigation-label">目次</p>
+  <button id="detail-label-overview" type="button" class="detail-page-navigation-item" aria-controls="detail-overview" aria-current="true">概要</button>
+  <button id="detail-label-1" type="button" class="detail-page-navigation-item" aria-controls="detail-1" aria-current="false"><span class="detail-page-navigation-number">01</span><span>キャンセル要求と保存</span></button>
+  <button id="detail-label-2" type="button" class="detail-page-navigation-item" aria-controls="detail-2" aria-current="false"><span class="detail-page-navigation-number">02</span><span>一覧と詳細の期限表示</span></button>
+  <button id="detail-label-3" type="button" class="detail-page-navigation-item" aria-controls="detail-3" aria-current="false"><span class="detail-page-navigation-number">03</span><span>一覧の取得とページ表示</span></button>
+  <button id="detail-label-4" type="button" class="detail-page-navigation-item" aria-controls="detail-4" aria-current="false"><span class="detail-page-navigation-number">04</span><span>キャンセル期限のテスト</span></button>
+</nav>
+<main class="detail-page-content">
+<!-- 書き手へ: 資料は、コメントだけを対象にする。書き手は、コード本体の指摘を書かず、コードレビューの資料に委ねる。読み手が2つの資料で同じ指摘を重ねて読まないためである。 -->
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+<div class="detail-page-hero">
+  <p class="eyebrow">受注管理 › 注文キャンセル › コメントレビュー</p>
+  <h1>注文のキャンセル期限 — コメントのレビュー</h1>
+</div>
+
+<h2>レビュー観点</h2>
+<p>注文のキャンセル期限を追加した差分について、コメントが必要か、実装と一致するか、説明する場所が適切かを確認する。型、名前、テスト、周辺のコードだけでは分からない仕様や理由を残し、不足していれば補う。</p>
+<!-- 書き手へ: 観点表は、この資料で何を根拠に判断するかを先に示す。観点表は、観点と確認内容の列を保つ。
+
+| 場面 | 書き手がすること |
+|---|---|
+| 常に | 「今回の確認対象」だけを対象の差分から書く |
+| 常に | 資料の使い方を本文に書かない |
+
+読み手が本文の判断をどの観点に照らして読むかを決めるためである。 -->
+<div class="table-wrap"><table><thead><tr><th class="table-label">観点</th><th class="table-description">確認内容</th><th class="table-description">今回の確認対象</th></tr></thead><tbody>
+<tr><th scope="row" class="table-label">コードだけで分かるか</th><td class="table-description">型、名前、テスト、周辺のコードから分からない仕様、理由、境界の扱いを残し、不足していれば補う。</td><td class="table-description"><a href="#policy-doc">期限の判定のJSDoc</a>、<a href="#save-narration">保存処理のコメント</a>、<a href="#test-reason">4日前の注文を使う理由</a>。</td></tr>
+<tr><th scope="row" class="table-label">実装と一致するか</th><td class="table-description">現在の実装と食い違っていないか。</td><td class="table-description"><a href="#controller-doc">応答コードのJSDoc</a>、<a href="#todo">実装後のTODO</a>、<a href="#list-comment">全件取得の理由</a>。</td></tr>
+<tr><th scope="row" class="table-label">説明する場所</th><td class="table-description">仕様や理由を、その適用範囲が分かる場所で説明しているか。</td><td class="table-description"><a href="#policy-doc">JSDocの本文とタグ</a>、<a href="#detail-comment">無期限の扱いを説明する2か所</a>。</td></tr>
+</tbody></table></div>
+
+<h2>変更の目的と対象</h2>
+<p>サーバーの判定と保存、画面の表示、一覧の取得、テストの準備を対象とする。<code>OrderCancelController.ts</code>、<code>OrderCancelService.ts</code>、<code>CancelPolicy.ts</code>、<code>OrderList.tsx</code>、<code>OrderDetail.tsx</code>、<code>cancelWindow.ts</code>、<code>OrderListService.ts</code>、<code>OrderCancelService.test.ts</code> のコメントと、説明が不足する箇所を確認する。</p>
+<p>サーバー側の全関数には <code>@param</code> と <code>@returns</code> が付いている。全テストにはArrange、Act、Assertの順でステップコメントがある。どちらも変更前からの形式なので、形式を維持して内容を確認する。</p>
+
+<h2>対象のコメントの全体図</h2>
+<div class="diagram-legend"><span>指摘あり</span></div>
+<!-- 書き手へ: 全体図は、対象のコメントがある場所を示し、指摘のある場所に印を持つ。全体図は、凡例の語を保つ。箱は、構造の名前とコメントの要約を持つ。
+
+| 場面 | 書き手がすること |
+|---|---|
+| 常に | 箱を対象のファイルで置き換える |
+| 常に | 図の読み方を題に書かない |
+
+読み手が指摘がどこに集まっているかを先に掴むためである。 -->
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>コメントが説明する構造</h3>
+    <div class="diagram-graph" data-subject="catalog">
+      <div class="diagram-layout">
+        <div class="diagram-catalog">
+          <a class="diagram-node" href="#policy-doc" data-node="node-1" data-kind="process" data-state="issue"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">指摘あり</span></div><b>CancelPolicy.withinWindow</b><small>server/src/orders/CancelPolicy.ts</small><span>JSDoc。本文に書かれた引数と戻り値の仕様</span></a>
+          <a class="diagram-node" href="#controller-doc" data-node="node-2" data-kind="process" data-state="issue"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">指摘あり</span></div><b>OrderCancelController.cancel</b><small>server/src/orders/OrderCancelController.ts</small><span>JSDoc。拒否したときの応答コード</span></a>
+          <a class="diagram-node" href="#todo" data-node="node-3" data-kind="process" data-state="issue"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">指摘あり</span></div><b>OrderCancelService.cancel の期限判定</b><small>server/src/orders/OrderCancelService.ts</small><span>判定の直前に残った TODO</span></a>
+          <a class="diagram-node" href="#save-narration" data-node="node-4" data-kind="process" data-state="issue"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">指摘あり</span></div><b>OrderCancelService.cancel の保存処理</b><small>server/src/orders/OrderCancelService.ts</small><span>保存処理に付いた6件の行コメント</span></a>
+          <a class="diagram-node" href="#detail-comment" data-node="node-5" data-kind="process" data-state="issue"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">指摘あり</span></div><b>OrderDetail.tsx の表示判定</b><small>client/src/features/orders/</small><span>呼び出し側に書かれた無期限の仕様</span></a>
+          <a class="diagram-node" href="#list-display" data-node="node-6" data-kind="process" data-state="issue"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">指摘あり</span></div><b>OrderList.tsx の表示判定</b><small>client/src/features/orders/</small><span>条件式の直前の行コメント</span></a>
+          <a class="diagram-node" href="#list-comment" data-node="node-7" data-kind="process" data-state="issue"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">指摘あり</span></div><b>OrderListService.list</b><small>server/src/orders/OrderListService.ts</small><span>全件取得に添えた理由</span></a>
+          <a class="diagram-node" href="#test-reason" data-node="node-8" data-kind="process" data-state="issue"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">指摘あり</span></div><b>期限切れを拒否するテスト</b><small>server/test/orders/OrderCancelService.test.ts</small><span>4日前の注文を用意する行。コメントなし</span></a>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+
+      </div>
+    </div>
+  </section>
+</figure>
+</header>
+
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+<h2>キャンセル要求と保存</h2>
+<p>サーバーの期限判定と、注文・関連記録の保存処理に付いたコメントを確認する。</p>
+
+<h3 id="policy-doc">期限の判定の JSDoc</h3>
+<p class="code-ref">server/src/orders/CancelPolicy.ts — withinWindow の JSDoc</p>
+<pre><code>/**
+ * 注文が期限内かを返す。
+ * days が null なら無期限として true。
+ * 期限ちょうどは期限切れとして扱う（期限に達した時点からキャンセル不可）。
+ *
+ * @param placedAt 注文日時
+ * @param days キャンセル可能日数
+ * @param nowMs 現在時刻（ミリ秒）
+ * @returns 期限内なら true
+ */
+export function withinWindow(placedAt: string, days: number | null, nowMs: number) {
+  if (days === null) return true;
+  return Date.parse(placedAt) + days * DAY_MS &gt; nowMs;
+}</code></pre>
+<p><code>null</code> を無期限とする説明と、期限ちょうどを期限切れとする説明は残す。型 <code>number | null</code> だけでは、<code>null</code> の意味は分からない。比較演算子から境界の動作は分かるが、それが意図した仕様かは分からない。<code>@param</code> と <code>@returns</code> の形式は維持する。</p>
+<aside class="review-observation" aria-labelledby="policy-finding">
+  <p class="observation-label">説明する場所 — CancelPolicy.withinWindow の JSDoc</p>
+  <h4 id="policy-finding">引数と戻り値の仕様は、その引数と戻り値のタグへ移す</h4>
+<div class="table-wrap"><table><thead><tr><th class="table-description">仕様の内容</th><th class="table-description">仕様が属する先</th></tr></thead><tbody>
+<tr><td class="table-description"><code>null</code> を無期限と扱う</td><td class="table-description"><code>days</code> に属する</td></tr>
+<tr><td class="table-description">期限ちょうどを期限切れとする</td><td class="table-description">戻り値に属する</td></tr>
+</tbody></table></div>
+  <p>仕様を本文に置くと、<code>@param days</code> と <code>@returns</code> には名前の言い換えだけが残る。読み手は、仕様を本文から探すことになる。</p>
+  <p class="code-ref">CancelPolicy.ts — 修正案（対象差分には未適用）</p>
+<pre class="diff"><code>/**
+ * 注文が期限内かを返す。
+<span class="del">- * days が null なら無期限として true。</span>
+<span class="del">- * 期限ちょうどは期限切れとして扱う（期限に達した時点からキャンセル不可）。</span>
+ *
+ * @param placedAt 注文日時
+<span class="del">- * @param days キャンセル可能日数</span>
+<span class="add">+ * @param days キャンセル可能日数。null なら無期限</span>
+ * @param nowMs 現在時刻（ミリ秒）
+<span class="del">- * @returns 期限内なら true</span>
+<span class="add">+ * @returns 期限内なら true。期限ちょうどは期限切れ（期限に達した時点からキャンセル不可）</span>
+ */</code></pre>
+</aside>
+
+<h3 id="controller-doc">応答コードを説明する JSDoc</h3>
+<p class="code-ref">server/src/orders/OrderCancelController.ts — cancel の JSDoc と例外の変換</p>
+<pre><code>/**
+ * キャンセル要求を受け付ける。
+ * 出荷済みと期限切れは 409 で拒否する。
+ */
+export async function cancel(req: Request, res: Response) {
+  try {
+    ...
+  } catch (error) {
+    if (error instanceof OrderNotCancelable) {
+      return res.status(409).json({ reason: error.reason });
+    }
+    if (error instanceof CancelWindowExceeded) {
+      return res.status(422).json({ reason: 'cancel_window_exceeded' });
+    }
+    throw error;
+  }
+}</code></pre>
+<aside class="review-observation" aria-labelledby="controller-finding">
+  <p class="observation-label">実装と一致するか — OrderCancelController.cancel の JSDoc</p>
+  <h4 id="controller-finding">期限切れの応答コードが実装と食い違うため、422 に直す</h4>
+  <p>実装は出荷済みを409、期限切れを422で返すが、JSDocは両方を409としている。期限切れの処理を追加した際に、説明が更新されていない。API利用者が応答コードを判断する根拠になるため、JSDocを実装に合わせて直す。</p>
+  <p class="code-ref">OrderCancelController.ts — 修正案（対象差分には未適用）</p>
+<pre class="diff"><code>/**
+ * キャンセル要求を受け付ける。
+<span class="del">- * 出荷済みと期限切れは 409 で拒否する。</span>
+<span class="add">+ * 出荷済みは 409、期限切れは 422 で拒否する。</span>
+ */</code></pre>
+</aside>
+
+<h3 id="todo">実装後に残った作業予定</h3>
+<p class="code-ref">server/src/orders/OrderCancelService.ts — cancel の期限判定</p>
+<pre><code>// TODO: 期限判定を追加する
+if (!CancelPolicy.withinWindow(
+    order.placedAt, tenant.settings.cancelWindowDays, now())) {
+  return { ok: false, reason: 'cancel_window_exceeded' };
+}</code></pre>
+<aside class="review-observation" aria-labelledby="todo-finding">
+  <p class="observation-label">実装と一致するか — OrderCancelService.cancel の期限判定</p>
+  <h4 id="todo-finding">作業予定は実装済みのため削る</h4>
+  <p>直後の <code>if</code> が期限の判定であるためである。人は、予定として読むと、まだ判定がないと誤解する。</p>
+  <p class="code-ref">OrderCancelService.ts — 修正案（対象差分には未適用）</p>
+<pre class="diff"><code><span class="del">-// TODO: 期限判定を追加する</span>
+if (!CancelPolicy.withinWindow(
+    order.placedAt, tenant.settings.cancelWindowDays, now())) {</code></pre>
+</aside>
+<h3 id="save-narration">保存処理の各行に付いたコメント</h3>
+<p class="code-ref">server/src/orders/OrderCancelService.ts — cancel のトランザクション内</p>
+<pre><code>return db.transaction(async (tx) =&gt; {
+  // 注文の状態をキャンセル済みに更新する
+  await OrderRepository.markCanceled(tx, order.id);
+  // 決済済みの場合のみ返金額を計算する（未決済なら null）
+  const refund = order.paidAt ? RefundCalculator.forOrder(order) : null;
+  // 返金がある場合は返金記録を pending で挿入する
+  if (refund) await RefundRepository.insert(tx, {
+    orderId: order.id, amount: refund.amount, status: 'pending'
+  });
+  // 監査ログにキャンセル操作を記録する
+  await AuditLogRepository.insert(tx, {
+    action: 'order.canceled', targetId: order.id, actorId
+  });
+  // outbox に返金要求イベントを追加する（ワーカーが非同期で処理する）
+  await OutboxRepository.insert(tx, {
+    type: 'refund.requested', payload: { orderId: order.id }
+  });
+  // 成功を返す
+  return { ok: true };
+});</code></pre>
+<aside class="review-observation" aria-labelledby="save-finding">
+  <p class="observation-label">コードだけで分かるか — OrderCancelService.cancel の保存処理</p>
+  <h4 id="save-finding">直後の処理を言い換えた5件を削り、outboxには非同期処理と未決済時の扱いを残す</h4>
+<div class="table-wrap"><table><thead><tr><th class="table-description">保存処理のコメント</th><th class="table-description">修正案がすること</th></tr></thead><tbody>
+<tr><td class="table-description">直後の処理を言い換えた5件</td><td class="table-description">削る</td></tr>
+<tr><td class="table-description">outboxの1件</td><td class="table-description">ワーカーが非同期で処理する説明を残し、未決済でも保存する理由を補う</td></tr>
+</tbody></table></div>
+  <p>6件のうち5件は、呼び出し名、引数、3項演算子、<code>if</code> の条件から分かる内容であり、削除できる。outboxのコメントにある「ワーカーが非同期で処理する」は、直後のinsertだけからは分からないため残す。仕様では、サービスは未決済でもoutboxを作り、ワーカーは返金記録のない注文には何もしない。この扱いを、<code>refund</code> が <code>null</code> でも保存する理由として補う。</p>
+  <p class="code-ref">OrderCancelService.ts — 修正案（対象差分には未適用）</p>
+<pre class="diff"><code>return db.transaction(async (tx) =&gt; {
+<span class="del">-  // 注文の状態をキャンセル済みに更新する</span>
+  await OrderRepository.markCanceled(tx, order.id);
+<span class="del">-  // 決済済みの場合のみ返金額を計算する（未決済なら null）</span>
+  const refund = order.paidAt ? RefundCalculator.forOrder(order) : null;
+<span class="del">-  // 返金がある場合は返金記録を pending で挿入する</span>
+  if (refund) await RefundRepository.insert(tx, {
+    orderId: order.id, amount: refund.amount, status: 'pending'
+  });
+<span class="del">-  // 監査ログにキャンセル操作を記録する</span>
+  await AuditLogRepository.insert(tx, {
+    action: 'order.canceled', targetId: order.id, actorId
+  });
+<span class="del">-  // outbox に返金要求イベントを追加する（ワーカーが非同期で処理する）</span>
+<span class="add">+  // ワーカーが非同期で処理する。未決済でも outbox を作り、返金記録がなければワーカーは何もしない</span>
+  await OutboxRepository.insert(tx, {
+    type: 'refund.requested', payload: { orderId: order.id }
+  });
+<span class="del">-  // 成功を返す</span>
+  return { ok: true };
+});</code></pre>
+</aside>
+<p class="review-note">コードレビュー資料は、期限の判定が最初の書き込みより後にある問題を扱う。</p>
+</section>
+
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+<h2>一覧と詳細の期限表示</h2>
+<p>詳細画面と一覧の期限表示に付いたコメントを確認する。</p>
+
+<h3 id="detail-comment">無期限の仕様を書いている2か所</h3>
+<p class="code-ref">client/src/features/orders/cancelWindow.ts — withinCancelWindow の JSDoc</p>
+<pre><code>/** 日数が null なら無期限として true を返す。 */
+export function withinCancelWindow(
+  placedAt: string, days: number | null, nowMs: number
+) {</code></pre>
+<p class="code-ref">client/src/features/orders/OrderDetail.tsx — 呼び出し側</p>
+<pre><code>// 日数が未設定なら無期限
+const canCancel = order.status !== 'shipped' &amp;&amp;
+  withinCancelWindow(
+    order.placedAt, SessionStore.cancelWindowDays(), nowMs
+  );</code></pre>
+<aside class="review-observation" aria-labelledby="detail-finding">
+  <p class="observation-label">説明する場所 — withinCancelWindow とその呼び出し側</p>
+  <h4 id="detail-finding">無期限の仕様は関数の JSDoc にまとめ、呼び出し側のコメントを削る</h4>
+  <p><code>null</code> を無期限とする仕様は、関数を呼ぶすべての場所に適用する。呼び出し側にも説明を書くと、呼び出しが増えるたびに重複し、関数の仕様を変えた際に古い説明が残りやすい。</p>
+  <p class="code-ref">OrderDetail.tsx — 修正案（対象差分には未適用）</p>
+<pre class="diff"><code><span class="del">-// 日数が未設定なら無期限</span>
+const canCancel = order.status !== 'shipped' &amp;&amp;
+  withinCancelWindow(
+    order.placedAt, SessionStore.cancelWindowDays(), nowMs
+  );</code></pre>
+  <p>修正案は、<code>cancelWindow.ts</code> の JSDoc をそのまま残す。</p>
+</aside>
+
+<h3 id="list-display">条件式の直前の行コメント</h3>
+<p class="code-ref">client/src/features/orders/OrderList.tsx — 一覧に追加したコード</p>
+<pre><code>const days = SessionStore.cancelWindowDays();
+const withinWindow = days === null ||
+  Date.parse(order.placedAt) + days * DAY_MS &gt;= nowMs;
+// 期限切れなら案内を表示する
+const expired = !withinWindow;</code></pre>
+<aside class="review-observation" aria-labelledby="list-display-finding">
+  <p class="observation-label">コードだけで分かるか — OrderList.tsx の表示判定</p>
+  <h4 id="list-display-finding">表示の分岐でも同じ内容が分かるなら、コメントを削る</h4>
+  <p><code>expired</code> の計算は掲載されているが、案内を表示する分岐は掲載されていない。<code>expired</code> を使う表示処理を確認し、名前と分岐から案内の表示条件が分かる場合に、次の削除案を適用する。</p>
+  <p class="code-ref">OrderList.tsx — 修正案（対象差分には未適用）</p>
+<pre class="diff"><code>const withinWindow = days === null ||
+  Date.parse(order.placedAt) + days * DAY_MS &gt;= nowMs;
+<span class="del">-// 期限切れなら案内を表示する</span>
+const expired = !withinWindow;</code></pre>
+</aside>
+<p class="review-note">コードレビュー資料は、一覧の式と詳細画面の既存関数の <code>&gt;=</code> と <code>&gt;</code> の違いを扱う。</p>
+</section>
+
+<section id="detail-3" class="detail-page-panel" aria-labelledby="detail-label-3" hidden>
+<h2>一覧の取得とページ表示</h2>
+<p>一覧に表示する注文の取得処理に付いたコメントを確認する。</p>
+
+<h3 id="list-comment">全件取得の理由</h3>
+<p class="code-ref">server/src/orders/OrderListService.ts — list の取得処理</p>
+<pre><code>// Repositoryにページ取得のAPIがないため、全件を取得してからsliceする
+const orders = await OrderRepository.findAllForTenant(tenant.id);
+return orders.slice(offset, offset + 20);</code></pre>
+<aside class="review-observation" aria-labelledby="list-finding">
+  <p class="observation-label">実装と一致するか — OrderListService.list の取得処理</p>
+  <h4 id="list-finding">理由に挙げた「ページ取得のAPIがない」は事実と異なるため削る</h4>
+  <p><code>OrderRepository</code> には <code>findPageForTenant</code> があり、変更前の <code>list</code> が呼んでいた。「ページ取得のAPIがない」という説明は、存在しない制約を伝えるため削る。</p>
+  <p class="code-ref">OrderListService.ts — 修正案（対象差分には未適用）</p>
+<pre class="diff"><code><span class="del">-// Repositoryにページ取得のAPIがないため、全件を取得してからsliceする</span>
+const orders = await OrderRepository.findAllForTenant(tenant.id);
+return orders.slice(offset, offset + 20);</code></pre>
+  <p>取得処理をページ取得へ戻す案はコードレビューで扱う。その案を適用すれば、コメントが説明していた全件取得の行もなくなる。</p>
+</aside>
+</section>
+
+<section id="detail-4" class="detail-page-panel" aria-labelledby="detail-label-4" hidden>
+<h2>キャンセル期限のテスト</h2>
+<p>期限切れのキャンセルを拒否するテストで、準備する値の理由が分かるかを確認する。</p>
+
+<h3 id="test-reason">4日前の注文を使う理由</h3>
+<p class="code-ref">server/test/orders/OrderCancelService.test.ts</p>
+<pre><code>it('期限切れを拒否し、何も保存しない', async () =&gt; {
+  // Arrange
+  const order = await seedPaidOrder({ placedAt: FOUR_DAYS_AGO });
+  // Act
+  const response = await client.cancel(order.id);
+  // Assert
+  expect(response.status).toBe(422);
+  expect(response.body.reason).toBe('cancel_window_exceeded');
+});</code></pre>
+<aside class="review-observation" aria-labelledby="test-finding">
+  <p class="observation-label">コードだけで分かるか — 期限切れを拒否するテストの準備</p>
+  <h4 id="test-finding">4日前を選んだ理由を確認し、コードだけで分からない部分を補う</h4>
+  <p>掲載テストには、キャンセル可能日数が3日であるという設定がない。3日に対して4日前なら1日超過になるが、その設定箇所と、境界ちょうどを確認する別テストの所在は掲載されていない。両方を確認できた場合に、次のコメントを追加する。</p>
+  <p class="code-ref">OrderCancelService.test.ts — 修正案（対象差分には未適用）</p>
+<pre class="diff"><code>  // Arrange
+<span class="add">+  // 可能日数3日に対して1日超過。境界ちょうどは別のテストで確かめる</span>
+  const order = await seedPaidOrder({ placedAt: FOUR_DAYS_AGO });</code></pre>
+</aside>
+<p class="review-note">確認が必要なのは、補助処理で3日を設定する箇所と、境界ちょうどを確かめるテスト名である。テストは実行していない。</p>
+</section>
+</main></div></div>
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>

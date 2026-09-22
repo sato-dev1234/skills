@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文のキャンセル期限のテストカバレッジ</title>
+<link rel="stylesheet" href="common.css">
+<style>
+/* 書き手へ: 色は、未確認や一部未確認の状況だけを強調する。確認手段と確認状況は別の列に書き、色だけで区別しない。 */
+:root { --del-ink: #9b2c2c; }
+
+
+  .key .table-wrap:last-child { margin-bottom: 0; }
+  .key table { background: transparent; }
+
+  /* 書き手へ: 各ケースに確認手段、確認状況、根拠を記す。手段は自動テスト、エージェントテストなど、状況はテストの有無、期待結果の確定状況、実行結果の所在で示す。対象外の場合は理由を記す。 */
+  .cov { display: inline-block; font-family: var(--font-heading); font-size: 11.5px; font-weight: 700; line-height: 1.4; padding: 1px 8px; border-radius: 3px; white-space: normal; }
+  .cov-auto { background: var(--code-bg); color: var(--ink-2); }
+  .cov-agent { background: var(--code-bg); color: var(--ink-2); }
+  .cov-gap { background: var(--del-bg); color: var(--del-ink); }
+  .cov-excluded { background: var(--code-bg); color: var(--ink-2); }
+
+  /* 書き手へ: セルは、列の役割を1つ持つ。セルは、幅と折り返しをこのスタイルだけで決め、列の順序や数に左右されない。条件の数が題材で変わっても、表が見え方を保つためである。 */
+  td.diff { white-space: nowrap; }
+  td.level { font-size: 13px; min-width: 8em; max-width: 14em; }
+  td.text { min-width: 240px; }
+  td.method { min-width: 8em; }
+  td.status { min-width: 12em; }
+  td.how { min-width: 260px; }
+  td.how .test, td.how .why { display: block; margin-top: 2px; line-height: 1.5; }
+  td.how .test { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+  td.how .test b { font-weight: 500; color: var(--ink); }
+  td.how .why { font-size: 12.5px; color: var(--ink-2); }
+  td.count { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="詳細">
+  <p class="detail-page-navigation-label">目次</p>
+  <button id="detail-label-overview" class="detail-page-navigation-item" type="button" aria-current="true" aria-controls="detail-overview">概要</button>
+  <button id="detail-label-1" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-1"><span class="detail-page-navigation-number">01</span><span>サーバーの判定と記録</span></button>
+  <button id="detail-label-2" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-2"><span class="detail-page-navigation-number">02</span><span>注文詳細の表示</span></button>
+  <button id="detail-label-3" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-3"><span class="detail-page-navigation-number">03</span><span>注文一覧の表示</span></button>
+  <button id="detail-label-4" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-4"><span class="detail-page-navigation-number">04</span><span>設定変更の反映</span></button>
+  <button id="detail-label-5" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-5"><span class="detail-page-navigation-number">05</span><span>未確認のケースと追加する検証</span></button>
+</nav>
+
+<main class="detail-page-content">
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+<div class="detail-page-hero">
+  <p class="eyebrow">受注管理 › 注文キャンセル › テストカバレッジ</p>
+  <h1>注文のキャンセル期限のテストカバレッジ</h1>
+  <p class="sub">契約先ごとのキャンセル期間について、条件と値の組み合わせごとに、期待結果・確認手段・確認状況を示す。</p>
+</div>
+<p class="code-ref">確認対象: feature/cancel-window の最終差分（main との比較）と既存の自動テスト</p>
+
+<p>利用者は、受注管理の注文詳細画面から注文をキャンセルできる。返金の記録は、決済済みの注文にできる。契約先は、キャンセルできる期間を日数で持つ。</p>
+<p>期限を過ぎた注文は、次のように扱う。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">場所</th><th class="table-description">期限を過ぎた注文の扱い</th></tr></thead>
+<tbody>
+<tr><td class="k table-label">注文詳細</td><td class="table-description">キャンセルボタンを出さない</td></tr>
+<tr><td class="k table-label">注文一覧</td><td class="table-description">出荷前なら期限切れの印を付ける。出荷済みの表示と印を併記するかは未確定</td></tr>
+<tr><td class="k table-label">サーバー</td><td class="table-description">出荷済みなら409、それ以外は422で拒否する</td></tr>
+</tbody>
+</table>
+</div>
+<p>画面とサーバーは、設定を取得する時点と使う時計が異なるため、判定結果に差が生じることがある。設定を変えると、画面はサーバーより遅れて新しい期間を使う。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">判定の場所</th><th class="table-description">使う設定</th><th class="table-description">使う時刻</th><th class="table-description">節</th></tr></thead>
+<tbody>
+<tr><td class="k table-description">サーバー</td><td class="table-description">要求ごとに読む契約先の設定</td><td class="table-description">サーバーの時刻</td><td class="table-description"><a href="#detail-1">サーバーの判定と記録</a></td></tr>
+<tr><td class="k table-description">画面（注文詳細、注文一覧）</td><td class="table-description">サインイン時に受け取った日数</td><td class="table-description">端末の時計</td><td class="table-description"><a href="#detail-2">注文詳細の表示</a>, <a href="#detail-3">注文一覧の表示</a></td></tr>
+</tbody>
+</table>
+</div>
+<p>検証ケースに対応する既存の自動テストは、次のファイルである。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">テストファイル</th><th class="table-description">確かめているもの</th></tr></thead>
+<tbody>
+<tr><td class="k table-label">OrderCancelService.test.ts</td><td class="table-description">サーバーの応答と保存内容</td></tr>
+<tr><td class="k table-label">CancelWindow.integration.test.ts</td><td class="table-description">期間内かどうかを分ける境界</td></tr>
+<tr><td class="k table-label">OrderDetail.test.ts</td><td class="table-description">注文詳細のボタンの有無</td></tr>
+<tr><td class="k table-label">OrderList.test.ts</td><td class="table-description">注文一覧の期限切れの印の有無</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- 書き手へ: 確認手段と確認状況は各ケースの列に示す。語の定義や表の読み方を説明する独立した判定表は設けない。集計は成功件数と区別し、何を数えたかを見出しで示す。 -->
+<h3 id="factors">検証に使う条件と値</h3>
+<p>決済の有無は、受付時に返金の記録を作るかどうかの確認に使う。期間の境界は、直前・同時刻・直後を区別する。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">条件</th><th class="table-description">値</th><th class="table-description">テストでの用意の仕方</th></tr></thead>
+<tbody>
+<tr><td class="k table-label">契約先の期間設定</td><td class="table-description">未設定 ／ 0日 ／ 3日</td><td class="table-description"><code>tenant_settings.cancel_window_days</code>。サーバーは、既存の契約先を未設定のまま無期限として扱う。<code>CancelWindow.integration.test.ts</code> は 3日の契約先だけを作っている</td></tr>
+<tr><td class="k table-label">注文の状態</td><td class="table-description">出荷前 ／ 出荷済み</td><td class="table-description">サーバーは、出荷済みかどうかを期間より先に判定する</td></tr>
+<tr><td class="k table-label">決済</td><td class="table-description">決済済み ／ 未決済</td><td class="table-description">決済は、サーバーが返金の記録を作るかどうかだけに影響する</td></tr>
+<tr><td class="k table-label">注文日時</td><td class="table-description">期間内 ／ 期限の1分前 ／ 同時刻 ／ 1分後 ／ 期間を過ぎた</td><td class="table-description">注文日時を過去に書き換えた注文を作る。判定時刻を「注文日時 + 日数」の1分前、同時刻、1分後にする。テストは <code>Clock</code> を固定して現在時刻を作っている</td></tr>
+<tr><td class="k table-label">期間の変更</td><td class="table-description">7日 → 3日 ／ 未設定 → 3日 ／ 3日 → 未設定</td><td class="table-description">「設定変更の反映」だけで使う。変更前と変更後の値の組を1つの値にする</td></tr>
+<tr><td class="k table-label">サインインの時点</td><td class="table-description">変更前のまま ／ 変更後にし直す ／ 関係しない（要求を直接送る）</td><td class="table-description">「設定変更の反映」だけで使う。画面が持つ日数はサインインし直すまで更新されない</td></tr>
+<tr><td class="k table-label">端末の時計</td><td class="table-description">正確 ／ 期限以降へ進める ／ 期限前へ戻す</td><td class="table-description">「注文詳細の表示」と「注文一覧の表示」で使う。画面は <code>Date.now()</code> を直接呼んでいて、テストから判定に使う時刻を渡せない</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="expectations">変更に求める動作とケースの対応</h3>
+<p>画面が端末の時計を使うことによる表示差は、詳細でT-16・T-17、一覧でT-27・T-28を確認する。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">期待</th><th class="table-label">確かめるケース</th></tr></thead>
+<tbody>
+<tr><td class="table-description">日数を設定した契約先で、出荷前かつ期間内の注文をキャンセルできる（設定画面の操作は対象外）</td><td class="level table-label"><a href="#t01">T-01</a>, <a href="#t02">T-02</a>, <a href="#t04">T-04</a>, <a href="#t12">T-12</a></td></tr>
+<tr><td class="table-description">出荷前で期間を過ぎた注文は、サーバーが422で拒否し、注文も関連記録も変えない</td><td class="level table-label"><a href="#t03">T-03</a>, <a href="#t05">T-05</a>, <a href="#t06">T-06</a>, <a href="#t10">T-10</a></td></tr>
+<tr><td class="table-description">期間を設定していない契約先は、今までどおり無期限に扱う</td><td class="level table-label"><a href="#t07">T-07</a>, <a href="#t22">T-22</a></td></tr>
+<tr><td class="table-description">出荷済みの注文は、今までどおり 409 で拒否する</td><td class="level table-label"><a href="#t08">T-08</a>, <a href="#t09">T-09</a></td></tr>
+<tr><td class="table-description">期間を過ぎた注文には注文詳細でボタンが出ず、期限切れの案内が出る</td><td class="level table-label"><a href="#t13">T-13</a>, <a href="#t14">T-14</a>, <a href="#t15">T-15</a></td></tr>
+<tr><td class="table-description">出荷前で期間を過ぎた注文は、注文一覧でも期限切れと分かる</td><td class="level table-label"><a href="#t23">T-23</a>, <a href="#t24">T-24</a></td></tr>
+<tr><td class="table-description">期間の設定は、設定した時点より前の注文にも働く</td><td class="level table-label"><a href="#t20">T-20</a></td></tr>
+<tr><td class="table-description">設定を変えると、サーバーは直後の要求から、画面はサインインし直してから新しい期間で判定する</td><td class="level table-label"><a href="#t19">T-19</a>, <a href="#t21">T-21</a></td></tr>
+<tr><td class="table-description">端末時計の差による詳細と一覧の表示が、各時計での期限判定に一致する</td><td class="level table-label"><a href="#t16">T-16</a>, <a href="#t17">T-17</a>, <a href="#t27">T-27</a>, <a href="#t28">T-28</a></td></tr>
+<tr><td class="table-description">期限前に開いた画面が残っていても、期限以降の要求は拒否する</td><td class="table-label"><a href="#t26">T-26</a></td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- 書き手へ: テスト名は、差分時点のテストファイルにある、パッケージ名を除いたクラス名とテスト名のままである。書き手は、写し方と表記を本文に書かない。読み手が表のテスト名でテストを探せるためである。 -->
+<h3 id="summary">ケース数と確認状況</h3>
+<p>全28ケース。以下は対応テストや必要な確認方法ごとのケース数であり、成功件数ではない。自動テストの実行結果と画面操作の実施結果は、この資料に記載されていない。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-description">ケースの状態</th><th class="table-label">ケース数</th><th class="table-description">主な内容</th></tr></thead><tbody>
+<tr><td class="table-description">対応する自動テストあり</td><td class="count table-label">12</td><td class="table-description">受付・拒否・境界・表示。T-03は注文の各項目の比較が不足（12件のうち1件）</td></tr>
+<tr><td class="table-description">エージェントによる画面操作が必要</td><td class="count table-label">7</td><td class="table-description">案内の位置、詳細と一覧の時計差、設定変更、開いたままの期限超過</td></tr>
+<tr><td class="table-description">テスト追加、既存範囲または期待結果の確認が必要</td><td class="count table-label">8</td><td class="table-description">未設定、判定順序、0日、出荷済みの決済・表示、設定変更直後</td></tr>
+<tr><td class="table-description">対象外</td><td class="count table-label">1</td><td class="table-description">T-18：最新設定・正確な時計で期限超過後に開いた画面のボタン操作</td></tr>
+</tbody></table></div>
+
+</header>
+
+<div class="detail-page-details">
+
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+<h2>サーバーの判定と記録</h2>
+<p>サーバーは、<code>POST /orders/:id/cancel</code> を受けると、出荷済みか、期間内かを順に確かめる。サーバーは、両方を通過したときだけ、注文をキャンセル済みにし、操作履歴と返金の依頼を同じトランザクションで保存する。決済済みの場合だけ返金の記録も保存する。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">ID</th><th class="table-label">期間設定</th><th class="table-label">注文の状態</th><th class="table-label">決済</th><th class="table-description">注文日時</th><th class="table-description">期待結果</th><th class="table-label">今までとの違い</th><th class="table-description">確認手段</th><th class="table-description">確認状況</th><th class="table-description">根拠・必要な確認</th></tr></thead>
+<tbody>
+<tr><td class="k table-label" id="t01">T-01</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-label">決済済み</td><td class="level table-description">期間内</td><td class="text table-description">200。注文がキャンセル済みになり、返金の記録（金額、手続き待ち）、操作履歴、返金の依頼が保存される</td><td class="diff table-label">変わらない</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>OrderCancelService.test.ts</b> cancels paid order within window and records refund</span></td></tr>
+<tr><td class="k table-label" id="t02">T-02</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-label">未決済</td><td class="level table-description">期間内</td><td class="text table-description">200。返金の記録は作られず、注文、操作履歴、返金の依頼は保存される</td><td class="diff table-label">変わらない</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>OrderCancelService.test.ts</b> cancels unpaid order without refund record</span></td></tr>
+<tr><td class="k table-label" id="t03">T-03</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-label">―</td><td class="level table-description">期間を過ぎた（4日前）</td><td class="text table-description">422、<code>reason</code> は <code>cancel_window_exceeded</code>。注文の各項目が変わらず、返金の記録・操作履歴・返金の依頼も追加されない</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-gap">一部未確認：注文の各項目の比較が不足。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>OrderCancelService.test.ts</b> rejects cancel after window with 422 and stores nothing</span></td></tr>
+<tr><td class="k table-label" id="t04">T-04</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-label">―</td><td class="level table-description">境界: 期限が現在の1分後</td><td class="text table-description">期間内。200</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>CancelWindow.integration.test.ts</b> accepts order one minute before deadline</span></td></tr>
+<tr><td class="k table-label" id="t05">T-05</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-label">―</td><td class="level table-description">境界: 期限が現在と同じ</td><td class="text table-description">期間を過ぎた扱い。422</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>CancelWindow.integration.test.ts</b> treats exact deadline as expired</span></td></tr>
+<tr><td class="k table-label" id="t06">T-06</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-label">―</td><td class="level table-description">境界: 期限が現在の1分前</td><td class="text table-description">期間を過ぎた扱い。422</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>CancelWindow.integration.test.ts</b> rejects order one minute after deadline</span></td></tr>
+<tr><td class="k table-label" id="t07">T-07</td><td class="level table-label">未設定</td><td class="level table-label">出荷前</td><td class="level table-label">―</td><td class="level table-description">1年前</td><td class="text table-description">200。サーバーが無期限として扱い、今までと同じ記録を保存する</td><td class="diff table-label">変わらない</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-gap">対応テストなし</span></td><td class="how table-description"><span class="why"><a href="#g01">G-01</a> 未設定を無期限として扱う分岐にテストがない</span></td></tr>
+<tr><td class="k table-label" id="t08">T-08</td><td class="level table-label">3日</td><td class="level table-label">出荷済み</td><td class="level table-label">―</td><td class="level table-description">期間内</td><td class="text table-description">409。何も保存されない</td><td class="diff table-label">変わらない</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>OrderCancelService.test.ts</b> rejects shipped order with 409</span></td></tr>
+<tr><td class="k table-label" id="t09">T-09</td><td class="level table-label">3日</td><td class="level table-label">出荷済み</td><td class="level table-label">―</td><td class="level table-description">期間を過ぎた</td><td class="text table-description">409。出荷済みの判定が先に働き、422 にはならない</td><td class="diff table-label">変わらない</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-gap">対応テストなし</span></td><td class="how table-description"><span class="why"><a href="#g02">G-02</a> 出荷状態と期間の判定順序を確かめるテストがない</span></td></tr>
+<tr><td class="k table-label" id="t10">T-10</td><td class="level table-label">0日</td><td class="level table-label">出荷前</td><td class="level table-label">―</td><td class="level table-description">注文直後</td><td class="text table-description">注文直後から期間を過ぎた扱い。422</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-gap">対応テストなし</span></td><td class="how table-description"><span class="why"><a href="#g03">G-03</a> 0 を設定したときのテストがない</span></td></tr>
+<tr><td class="k table-label" id="t11">T-11</td><td class="level table-label">3日</td><td class="level table-label">出荷済み</td><td class="level table-label">決済済み</td><td class="level table-description">期間内</td><td class="text table-description">409。注文と関連記録は変わらず、返金の記録は作られない</td><td class="diff table-label">変わらない</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-gap">既存テストに含まれるか未確認</span></td><td class="how table-description"><span class="why">T-08の準備が決済済み注文を含むか未確認。含む場合は重複を統合し、含まない場合は拒否と保存なしを検証する</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="server-notes">サーバーテストが確かめている範囲</h3>
+<p>T-03では、応答と各記録の件数を比較するテストがある。ただし、件数が変わらなくても既存注文のstatusは更新できる。期待結果を確認するには、要求前後の注文の各項目も比較する必要がある。<a href="#g06">G-06</a>で検証を追加する。</p>
+<p>境界は、<code>CancelWindow.integration.test.ts</code> が <code>Clock</code> を固定して確かめている。サーバーは、注文日時に日数を足した時刻が現在時刻より未来かで判定し、同じ時刻は未来に含めない。</p>
+</section>
+
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+<h2>注文詳細の表示</h2>
+<p>注文詳細画面は、注文の状態、サインイン時に受け取った日数、端末の時計からキャンセルボタンを出すかどうかを決める。注文詳細画面は、期間を過ぎた注文にはボタンを出さず、代わりに期限切れの案内を出す。注文詳細画面は、決済が済んでいるかどうかを判定に使わない。</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">ID</th><th class="table-label">期間設定</th><th class="table-label">注文の状態</th><th class="table-description">注文日時</th><th class="table-description">端末の時計</th><th class="table-description">期待結果</th><th class="table-label">今までとの違い</th><th class="table-description">確認手段</th><th class="table-description">確認状況</th><th class="table-description">根拠・必要な確認</th></tr></thead>
+<tbody>
+<tr><td class="k table-label" id="t12">T-12</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">期間内</td><td class="level table-description">正確</td><td class="text table-description">注文詳細画面がボタンを出す</td><td class="diff table-label">変わらない</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>OrderDetail.test.ts</b> shows cancel button within window</span></td></tr>
+<tr><td class="k table-label" id="t13">T-13</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">期間を過ぎた</td><td class="level table-description">正確</td><td class="text table-description">注文詳細画面がボタンを出さない</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>OrderDetail.test.ts</b> hides cancel button after window</span></td></tr>
+<tr><td class="k table-label" id="t14">T-14</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">期間を過ぎた</td><td class="level table-description">正確</td><td class="text table-description">期限切れの案内を、ボタンがあった位置に読み取れる大きさで表示する。正式文言は未確定</td><td class="diff table-label">新しい結果</td><td class="method table-description">エージェントテスト</td><td class="status table-description"><span class="cov cov-excluded">確認が必要。実施結果の記載なし</span></td><td class="how table-description"><span class="why">案内の有無、位置、判読性を描画で確認し、観測した文言を記録する</span></td></tr>
+<tr><td class="k table-label" id="t15">T-15</td><td class="level table-label">3日</td><td class="level table-label">出荷済み</td><td class="level table-description">期間を過ぎた</td><td class="level table-description">正確</td><td class="text table-description">ボタンを表示せず、期限切れの案内を表示する</td><td class="diff table-label">案内は新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-gap">対応テストの有無は未確認</span></td><td class="how table-description"><span class="why"><a href="#g04">G-04</a> 期限超過時の案内表示は出荷済みにも適用する。対応テストの有無は未確認</span></td></tr>
+<tr><td class="k table-label" id="t16">T-16</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">サーバー時刻では期間内</td><td class="level table-description">期限以降へ進める</td><td class="text table-description">期限切れの案内を表示し、ボタンを表示しない</td><td class="diff table-label">新しい結果</td><td class="method table-description">エージェントテスト</td><td class="status table-description"><span class="cov cov-excluded">確認が必要。実施結果の記載なし</span></td><td class="how table-description"><span class="why">画面の判定は <code>Date.now()</code> を直接呼び、判定に使う時刻をテストから渡す手段がない。実機で時計を変えて見る</span></td></tr>
+<tr><td class="k table-label" id="t17">T-17</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">サーバー時刻では期間外</td><td class="level table-description">期限前へ戻す</td><td class="text table-description">注文詳細画面がボタンを出すが、押すとサーバーの時刻で判定され 422 になる。画面がエラーで操作不能にならず、注文は変わらない</td><td class="diff table-label">新しい結果</td><td class="method table-description">エージェントテスト</td><td class="status table-description"><span class="cov cov-excluded">確認が必要。実施結果の記載なし</span></td><td class="how table-description"><span class="why">T-16 と同じ理由。422 を受けた画面の表示はこの差分に含まれておらず、表示された内容を記録する</span></td></tr>
+<tr><td class="k table-label" id="t18">T-18</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">期限超過後に詳細を開く</td><td class="level table-description">正確</td><td class="text table-description">最新設定と正確な時計で開いた詳細にはボタンがなく、ボタンから要求できない</td><td class="diff table-label">―</td><td class="table-description">―</td><td class="table-description"><span class="cov cov-excluded">対象外</span></td><td class="how table-description"><span class="why">除外するのは期限超過後に開いた画面のボタン操作だけ。直接要求はT-03、期限前から開いた画面はT-26で確認する</span></td></tr>
+<tr><td class="k table-label" id="t26">T-26</td><td class="level table-label">3日（最新設定）</td><td class="level table-label">出荷前</td><td class="level table-description">期限前に詳細を開き、開いたまま期限を越す</td><td class="level table-description">正確</td><td class="text table-description">期限後のボタンの有無を記録する。ボタンが残り要求した場合は422となり、注文と関連記録は変わらない</td><td class="diff table-label">新しい結果</td><td class="method table-description">エージェントテスト</td><td class="status table-description"><span class="cov cov-gap">画面の更新方法が未確認。実施結果の記載なし</span></td><td class="how table-description"><span class="why"><a href="#g07">G-07</a> 時間経過による画面の更新方法は未確認。表示の観測とサーバーの拒否を分けて確認する</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="caution"><p>T-16とT-17のケースは、時刻を注入できる構造にすれば自動テストに移せる。書き手は、ケースをエージェントテストに置いたまま、構造を変えるかどうかを開発担当に決めてもらう。今回は差分の範囲外であるためである。</p></div>
+</section>
+
+<section id="detail-3" class="detail-page-panel" aria-labelledby="detail-label-3" hidden>
+<!-- 書き手へ: 節は、確認する場所ごとに分かれる。
+
+| 場面 | 書き手がすること |
+|---|---|
+| 判定の材料が他の場所と同じでも、表示する画面が別 | 節を分ける |
+| 常に | 分けた理由を本文に書かない |
+
+読み手が場所ごとにケースを追うためである。 -->
+<h2>注文一覧の表示</h2>
+<p>注文一覧は、各行の注文を注文詳細と同じように判定し、期間を過ぎた出荷前の注文に「期限切れ」の印を付ける。注文一覧で確かめるのは、印が付くかどうかだけである。ボタンが、一覧に無いためである。</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">ID</th><th class="table-label">期間設定</th><th class="table-label">注文の状態</th><th class="table-description">注文日時</th><th class="table-description">端末の時計</th><th class="table-description">期待結果</th><th class="table-label">今までとの違い</th><th class="table-description">確認手段</th><th class="table-description">確認状況</th><th class="table-description">根拠・必要な確認</th></tr></thead>
+<tbody>
+<tr><td class="k table-label" id="t23">T-23</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">期間内</td><td class="level table-description">正確</td><td class="text table-description">注文一覧が印を付けない</td><td class="diff table-label">変わらない</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>OrderList.test.ts</b> hides expired mark within window</span></td></tr>
+<tr><td class="k table-label" id="t24">T-24</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">期間を過ぎた</td><td class="level table-description">正確</td><td class="text table-description">注文一覧が「期限切れ」の印を付ける</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>OrderList.test.ts</b> shows expired mark after window</span></td></tr>
+<tr><td class="k table-label" id="t25">T-25</td><td class="level table-label">3日</td><td class="level table-label">出荷済み</td><td class="level table-description">期間を過ぎた</td><td class="level table-description">正確</td><td class="text table-description">注文一覧が出荷済みの表示を付ける。期限切れの印を重ねるかは、差分から決められない</td><td class="diff table-label">要確認</td><td class="table-description">未定</td><td class="table-description"><span class="cov cov-gap">期待結果が未確定</span></td><td class="how table-description"><span class="why"><a href="#g04">G-04</a> 期待結果を決めていない</span></td></tr>
+<tr><td class="k table-label" id="t27">T-27</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">サーバー時刻では期間内</td><td class="level table-description">期限以降へ進める</td><td class="text table-description">期限切れの印を付ける</td><td class="diff table-label">新しい結果</td><td class="method table-description">エージェントテスト</td><td class="status table-description"><span class="cov cov-excluded">確認が必要。実施結果の記載なし</span></td><td class="how table-description"><span class="why">一覧の描画を実機で確認する。端末時計を変更した状態で一覧を開く</span></td></tr>
+<tr><td class="k table-label" id="t28">T-28</td><td class="level table-label">3日</td><td class="level table-label">出荷前</td><td class="level table-description">サーバー時刻では期間外</td><td class="level table-description">期限前へ戻す</td><td class="text table-description">期限切れの印を付けない</td><td class="diff table-label">新しい結果</td><td class="method table-description">エージェントテスト</td><td class="status table-description"><span class="cov cov-excluded">確認が必要。実施結果の記載なし</span></td><td class="how table-description"><span class="why">一覧の描画を実機で確認する。端末時計を変更した状態で一覧を開く</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>端末時計を進めた場合と戻した場合の一覧の表示は、T-27・T-28として詳細画面とは別に記録する。</p>
+</section>
+
+<section id="detail-4" class="detail-page-panel" aria-labelledby="detail-label-4" hidden>
+<h2>設定変更の反映</h2>
+<p>次のケースには、出荷前の注文を使う。T-21では、画面が変更前の日数を保持したまま要求する。</p>
+<p>期間は、契約先で変えたとき、サーバーと画面で反映される時点が違う。このテストは、反映される時点が違うことが想定どおり出るかと、設定より前に作られた注文にも期間が働くかを確かめる。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">判定の場所</th><th class="table-label">設定を読む時点</th><th class="table-description">変更をいつ使うか</th></tr></thead>
+<tbody>
+<tr><td class="k table-label">サーバー</td><td class="table-label">要求ごと</td><td class="table-description">変更直後の要求から新しい期間で判定する</td></tr>
+<tr><td class="k table-label">画面</td><td class="table-label">サインイン時</td><td class="table-description">サインインし直すまで変更前の期間で表示する</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">ID</th><th class="table-label">期間の変更</th><th class="table-description">サインイン</th><th class="table-description">注文日時</th><th class="table-description">期待結果</th><th class="table-label">今までとの違い</th><th class="table-description">確認手段</th><th class="table-description">確認状況</th><th class="table-description">根拠・必要な確認</th></tr></thead>
+<tbody>
+<tr><td class="k table-label" id="t19">T-19</td><td class="level table-label">7日 → 3日</td><td class="level table-description">関係しない（要求を直接送る）</td><td class="level table-description">5日前</td><td class="text table-description">422。サーバーは変更直後の要求から新しい期間で判定する</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-gap">対応テストなし</span></td><td class="how table-description"><span class="why"><a href="#g05">G-05</a> 設定を変えた直後の要求を確かめるテストがない</span></td></tr>
+<tr><td class="k table-label" id="t20">T-20</td><td class="level table-label">未設定 → 3日</td><td class="level table-description">変更後にし直す</td><td class="level table-description">4日前（設定変更前の注文）</td><td class="text table-description">422。期間は設定した時点より前の注文にも働く</td><td class="diff table-label">新しい結果</td><td class="method table-description">自動テスト</td><td class="status table-description"><span class="cov cov-excluded">対応テストあり。実行結果の記載なし</span></td><td class="how table-description"><span class="test"><b>CancelWindow.integration.test.ts</b> applies window to orders placed before the setting</span></td></tr>
+<tr><td class="k table-label" id="t21">T-21</td><td class="level table-label">7日 → 3日</td><td class="level table-description">変更前のまま</td><td class="level table-description">5日前</td><td class="text table-description">画面が変更前の期間で判定してボタンを出す。押すと 422。サインインし直すとボタンが出なくなる</td><td class="diff table-label">新しい結果</td><td class="method table-description">エージェントテスト</td><td class="status table-description"><span class="cov cov-excluded">確認が必要。実施結果の記載なし</span></td><td class="how table-description"><span class="why">サインイン状態を保ったまま設定を変え、画面とサーバーを続けて見る流れは、この差分に含まれる単体と API のテストでは表せない</span></td></tr>
+<tr><td class="k table-label" id="t22">T-22</td><td class="level table-label">3日 → 未設定</td><td class="level table-description">変更後にし直す</td><td class="level table-description">1年前</td><td class="text table-description">ボタンが出て、押すと 200</td><td class="diff table-label">変わらない</td><td class="method table-description">画面操作</td><td class="status table-description"><span class="cov cov-gap">対応テストなし</span></td><td class="how table-description"><span class="why"><a href="#g01">G-01</a> 未設定を無期限として扱う分岐にテストがない</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>T-21の注文は、変更前の7日では期間内、変更後の3日では期間外となる。画面が旧設定を保持していればボタンが出るが、要求は新設定で拒否される。この条件での表示差は、設定を取得する時点の違いによる想定された結果である。</p>
+</section>
+
+<section id="detail-5" class="detail-page-panel" aria-labelledby="detail-label-5" hidden>
+<h2>未確認のケースと追加する検証</h2>
+<p>G-01は、既存の契約先でキャンセルを許可する条件に関わる。G-02は、出荷済みと期限切れが重なった場合の応答に関わる。書き手は、この差分を取り込む前に、G-01とG-02のテストを追加することを推奨する。</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">ID</th><th class="table-label">対象</th><th class="table-description">既存のテストが確かめていない理由</th><th class="table-description">漏れたときに何が起きるか</th><th class="table-description">追加する検証</th></tr></thead>
+<tbody>
+<tr><td class="k table-label" id="g01">G-01</td><td class="level table-label"><a href="#t07">T-07</a>, <a href="#t22">T-22</a></td><td class="table-description"><code>CancelWindow.integration.test.ts</code> は3日の契約先だけを作っていて、未設定を無期限として扱う分岐を通るテストがない</td><td class="table-description">既存の契約先で誤って拒否されると、この変更の前から使えていたキャンセルができなくなる</td><td class="table-description"><code>CancelWindow.integration.test.ts</code> に、未設定で出荷前の1年前の注文を受け付けるT-07のテストを追加する。T-22は、3日から未設定へ変更し、再サインイン後のボタン表示と受付成功を画面操作で確認する</td></tr>
+<tr><td class="k table-label" id="g02">G-02</td><td class="level table-label"><a href="#t09">T-09</a></td><td class="table-description">出荷済みの拒否と期間の拒否は別々のテストで確かめられていて、両方に該当する注文でどちらの応答が返るかを確かめるテストがない</td><td class="table-description">判定順が逆になると、出荷済みかつ期限超過の応答が409から422へ変わる。画面の表示への影響は別に確認する</td><td class="table-description"><code>OrderCancelService.test.ts</code> に、出荷済みかつ期間を過ぎた注文で 409 を返すテストを追加する</td></tr>
+<tr><td class="k table-label" id="g03">G-03</td><td class="level table-label"><a href="#t10">T-10</a></td><td class="table-description">日数が 0 の契約先を作るテストがない。設定画面で 0 を許すかどうかも決まっていない</td><td class="table-description">0 を「未設定と同じ」と読む実装に変わっても気づけない</td><td class="table-description">保存済み設定やAPIを含め、0が判定へ渡る可能性を確認する。0が渡るなら0日の拒否をテストする。どの経路からも渡らないと確認できた場合だけT-10を対象外にし、許容する最小値を検証する</td></tr>
+<tr><td class="k table-label" id="g04">G-04</td><td class="level table-label"><a href="#t15">T-15</a>, <a href="#t25">T-25</a></td><td class="table-description">詳細の案内表示は期待結果が定まるが、対応テストの有無が未確認。一覧の出荷済み表示と期限切れの印の併記は未確定</td><td class="table-description">詳細で必要な案内が欠けても検出できない。一覧は期待結果が未確定のままでは表示の妥当性を判断できない</td><td class="table-description">T-15は <code>OrderDetail.test.ts</code> でボタン非表示・案内表示を確認する。T-25は開発担当に併記の要否を確認してから <code>OrderList.test.ts</code> に検証を追加する</td></tr>
+<tr><td class="k table-label" id="g05">G-05</td><td class="level table-label"><a href="#t19">T-19</a></td><td class="table-description">サーバーが設定を要求ごとに読むことは実装から読めるが、設定を変えた直後の要求で確かめるテストがない</td><td class="table-description">設定がサインイン時などに読み込まれる実装に変わると、契約先が期間を短くしてもしばらく効かない</td><td class="table-description"><code>OrderCancelService.test.ts</code> に設定変更前後の要求を追加する。各要求の前に同じ出荷前・受付前の注文状態へ戻し、旧設定では200、新設定では422を確認する。状態を戻す方法は準備処理を確認して決める</td></tr>
+<tr><td class="k table-label" id="g06">G-06</td><td class="table-label"><a href="#t03">T-03</a></td><td class="table-description">件数比較では注文の項目の更新を検出できない</td><td class="table-description">422で拒否しても注文がcanceledに変わる不具合を見逃す</td><td class="table-description">要求前後の注文の各項目を比較する。返金記録・操作履歴・outboxに追加がないことも確認する</td></tr>
+<tr><td class="k table-label" id="g07">G-07</td><td class="table-label"><a href="#t26">T-26</a></td><td class="table-description">期限前から開いた画面の自動更新方法が未確認</td><td class="table-description">古いボタンからの要求を確認し損ねる</td><td class="table-description">開いたまま期限を越した後の表示を記録する。ボタンが残れば要求し、422と注文・関連記録の不変更を確認する</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- 書き手へ: 表は、確認しないものを理由とともに含む。表は、含めないもの、理由、代わりに確かめることの3列を保つ。書き手は、行を対象で置き換える。読み手が確認漏れと意図した除外を見分けるためである。 -->
+<h3 id="excluded">対象外にしたもの</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">含めないもの</th><th class="table-description">理由</th><th class="table-description">代わりに確かめること</th></tr></thead>
+<tbody>
+<tr><td class="table-description">返金処理（決済サービスへの依頼）</td><td class="table-description">今回は変えない</td><td class="table-description">返金の依頼が登録されるところまでを T-01 と T-02 で確かめる</td></tr>
+<tr><td class="table-description">契約先の設定画面と、負の日数や小数の入力制約</td><td class="table-description">この差分に含めない</td><td class="table-description">設定値は用意済みとして扱う</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+</div>
+</main>
+</div>
+</div>
+
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>

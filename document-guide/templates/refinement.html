@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文をキャンセルできる期間を設ける</title>
+<link rel="stylesheet" href="common.css">
+<script src="flow.js" defer></script>
+</head>
+<body>
+<div class="doc">
+
+<div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="詳細">
+  <p class="detail-page-navigation-label">目次</p>
+  <button id="detail-label-overview" class="detail-page-navigation-item" type="button" aria-current="true" aria-controls="detail-overview">概要</button>
+  <button id="detail-label-basis" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-basis"><span class="detail-page-navigation-number">基準</span><span>確定した要件</span></button>
+  <button id="detail-label-1" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-1"><span class="detail-page-navigation-number">01</span><span>注文詳細を開くとき</span></button>
+  <button id="detail-label-2" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-2"><span class="detail-page-navigation-number">02</span><span>キャンセルを押すとき</span></button>
+  <button id="detail-label-3" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-3"><span class="detail-page-navigation-number">03</span><span>設定を変えたとき</span></button>
+  <button id="detail-label-rejected" class="detail-page-navigation-item" type="button" aria-current="false" aria-controls="detail-rejected"><span class="detail-page-navigation-number">参考</span><span>採用しなかった案</span></button>
+</nav>
+
+<main class="detail-page-content">
+<!-- 書き手へ: 書き手は、本文にコードブロックを置かない。読み手がプロダクトマネージャーであり、操作場面と結果で仕様を確かめるためである。 -->
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+<div class="detail-page-hero">
+  <p class="eyebrow">受注管理 › 注文キャンセル › 要件</p>
+  <h1>注文をキャンセルできる期間を設ける</h1>
+  <p class="sub">契約先は、注文から何日以内ならキャンセルできるかを設定できる。期間を過ぎた注文は、キャンセルできない。</p>
+</div>
+
+<p>受注管理が今回の対象である。利用者は、注文詳細画面からキャンセルできる。返金は、決済済みの注文では自動で進む。これまでは、出荷前ならいつでも注文をキャンセルできた。契約先からは、注文から長く経った後のキャンセルが出荷準備や在庫の計画とぶつかるという問い合わせが続いていた。</p>
+<p>変更は、「注文詳細を開くとき」と「キャンセルを押すとき」に現れる。画面は、利用者がサインインした直後に1度だけ期間の設定値を受け取り、その後は持ち続ける。期間の設定を変えたときは、画面とサーバーで新しい設定が判定に反映される時点が異なる。</p>
+
+<!-- 書き手へ: 図は、キャンセルできる期間が関わる場面を行ごとに並べる。図は、場面ごとの番号を本文の見出しと揃えて持ち、行の間に順序を表す矢印を持たない。書き手は、図の読み方を本文と題に書かない。読み手が図の作りだけで読めるためである。 -->
+<figure class="diagram">
+  <div class="diagram-legend"><span class="existing">今までと同じ</span><span class="changed">今回変わる</span><span class="excluded">今回は対象外</span></div>
+  <section class="diagram-scene">
+    <h3>サインインした直後（利用者の操作はない）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>契約先の設定を受け取る</b><span class="change">+ キャンセルできる期間（日数）を一緒に受け取る</span></div>
+          <div class="diagram-node" data-node="node-2" data-kind="data" data-state="changed"><div class="diagram-meta"><span class="diagram-role">データ</span><span class="diagram-state">変更あり</span></div><b>画面が持つ設定</b><span class="body">契約先、権限</span><span class="change">+ キャンセルできる期間</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="reference"><span>保持する</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>注文詳細を開くとき（注文した利用者）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#detail" data-node="node-3" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>① 注文詳細を見る</b><span class="change">+ 期間を過ぎた注文にはキャンセルボタンが出ない</span></a>
+          <div class="diagram-node" data-node="node-4" data-kind="data" data-state="changed"><div class="diagram-meta"><span class="diagram-role">データ</span><span class="diagram-state">変更あり</span></div><b>画面が持つ設定</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-4" data-to="node-3" data-kind="data" data-role="reference"><span>期間を読む</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>キャンセルを押すとき（注文した利用者）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#cancel" data-node="node-5" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>② キャンセルする</b><span class="change">+ 期間を過ぎていれば受け付けない</span></a>
+          <div class="diagram-stack">
+            <div class="diagram-node" data-node="node-6" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>注文</b><span class="body">キャンセル済みになる</span></div>
+            <div class="diagram-node" data-node="node-7" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>操作履歴、返金の依頼</b><span class="body">決済済みなら返金の記録も作る</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-5" data-to="node-6" data-kind="data" data-role="reference"><span>まとめて記録する</span></span>
+        <span data-from="node-5" data-to="node-7" data-kind="data" data-role="reference"></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>キャンセルの後（自動）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-8" data-kind="process" data-state="excluded"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">対象外</span></div><b>返金の手続き</b><span class="body">決済サービスへ返金を依頼する。今回は変更なし</span></div>
+          <div class="diagram-node" data-node="node-9" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>返金の依頼</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-9" data-to="node-8" data-kind="data" data-role="reference"><span>依頼を読む</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>図1. キャンセルできる期間が関わる場面</figcaption>
+</figure>
+
+<div class="key">
+  <p><b>実装基準は確定している。</b> 注文は、期間を設定していない契約先では、今までどおり出荷前ならいつでもキャンセルできる。利用者は、期間を設定した契約先に属する人だけ動作が変わる。</p>
+  <p><b>今回の実装を止める未決事項はない。</b></p>
+</div>
+</header>
+
+<section id="detail-basis" class="detail-page-panel" aria-labelledby="detail-label-basis" hidden>
+<!-- 書き手へ: 表は、確定した要件を実装のよりどころとして示す。表は、判断する対象、確定した内容、判断の理由の3列を保つ。書き手は、行を対象の要件で置き換える。読み手が要件の根拠を実装前に確かめるためである。 -->
+<h2>確定した要件</h2>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">判断する対象</th><th class="table-description">確定した内容</th><th class="table-description">なぜそう決めたか</th></tr></thead>
+<tbody>
+<tr><td class="k table-description">適用する契約先</td><td class="table-description">サーバーは、キャンセル可能日数を設定した契約先だけに適用し、未設定なら従来どおり扱う</td><td class="table-description">既存契約先の操作を予告なく制限しないため</td></tr>
+<tr><td class="k table-description">キャンセルできるかどうか</td><td class="table-description">画面で期限切れを案内し、受付時にはサーバーが最新の期間で最終判断する</td><td class="table-description">表示状態や端末時刻にかかわらず、誤ったキャンセルを防ぐため</td></tr>
+<tr><td class="k table-description">返金処理</td><td class="table-description">サーバーは、期間を確認する処理だけを既存処理の前へ加え、受け付けた後の返金処理を変更しない</td><td class="table-description">キャンセル期限の導入と決済処理の変更を分けるため</td></tr>
+<tr><td class="k table-description">設定を変えたときの反映</td><td class="table-description">画面は次のサインイン時に表示を更新し、サーバーは判定にすぐ反映する</td><td class="table-description">誤ったキャンセルを防ぎつつ、設定を読む仕組み全体の変更を今回へ含めないためである</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="key"><p><b>利用者が確認した結果:</b> 利用者は、表の内容を今回の実装基準とする。画面は、期限が切れた注文に「キャンセル期限を過ぎています」と案内する。画面は、問い合わせ窓口へ移る道筋を今回は追加しない。</p></div>
+</section>
+
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+<h2>注文詳細を開くとき</h2>
+<p>注文詳細画面は、注文の状態と契約先が設定した期間からキャンセルボタンを出すかどうかを決める。注文は、出荷済みならボタンが出ないのは今までと同じであり、期間を過ぎたらボタンが出ず、代わりに期限切れの案内が出るのが新しい。</p>
+
+<figure class="diagram">
+  <div class="diagram-legend"><span class="existing">今までと同じ</span><span class="changed">今回変わる</span></div>
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#detail" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>① 注文詳細を開く</b><small>注文の状態と注文日を見る</small></a>
+          <div class="diagram-node" data-node="node-2" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>画面が持つ設定</b><span class="body">サインイン時の値</span></div>
+        </div>
+        <div class="diagram-options">
+          <div class="diagram-node" data-node="node-3" data-kind="end" data-state="existing"><div class="diagram-meta"><span class="diagram-role">終了</span></div><span class="cond">出荷済み</span><b>キャンセルボタンが出ない</b><small>今までと同じ</small></div>
+          <div class="diagram-node" data-node="node-4" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><span class="cond">出荷前で、<br>期間内または期間未設定</span><b>キャンセルボタンが出る</b></div>
+          <div class="diagram-node" data-node="node-5" data-kind="end" data-state="changed"><div class="diagram-meta"><span class="diagram-role">終了</span><span class="diagram-state">変更あり</span></div><span class="cond">期間を過ぎた</span><b>「キャンセル期限を過ぎています」と表示</b><small>新しい案内</small></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-6" data-kind="end" data-state="existing"><div class="diagram-meta"><span class="diagram-role">終了</span></div><b>② キャンセルする へ</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-2" data-to="node-1" data-kind="data" data-role="reference"><span>期間を読む</span></span>
+        <span data-from="node-1" data-to="node-3" data-kind="control" data-role="branch"></span>
+        <span data-from="node-1" data-to="node-4" data-kind="control" data-role="branch"></span>
+        <span data-from="node-1" data-to="node-5" data-kind="control" data-role="branch"></span>
+        <span data-from="node-4" data-to="node-6" data-kind="control" data-role="sequence"><span>利用者がボタンを押す</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>図2. 注文の条件ごとのキャンセルボタンと案内</figcaption>
+</figure>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">注文の状態</th><th class="table-description">利用者に見えるもの</th><th class="table-label">今までとの違い</th></tr></thead>
+<tbody>
+<tr><td class="k table-description">出荷済み</td><td class="table-description">注文詳細画面がキャンセルボタンを出さない</td><td class="table-label">変わらない</td></tr>
+<tr><td class="k table-description">出荷前で、注文日から設定日数以内</td><td class="table-description">注文詳細画面がキャンセルボタンを出す</td><td class="table-label">変わらない</td></tr>
+<tr><td class="k table-description">出荷前で、契約先が期間を設定していない</td><td class="table-description">注文詳細画面がキャンセルボタンを出す</td><td class="table-label">変わらない</td></tr>
+<tr><td class="k table-description">出荷前で、注文日から設定日数を過ぎた</td><td class="table-description">注文詳細画面がボタンの代わりに「キャンセル期限を過ぎています」と案内する</td><td class="table-label">新しい案内</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="detail">① 期間を過ぎた注文にはボタンを出さない</h3>
+<p>出荷済みの注文にも、期間を過ぎていれば期限切れの案内を表示する。キャンセルボタンは表示しない。</p>
+<p>期間は、注文した日時から何日以内かで数える値であり、日付そのものを指定する方式ではない。画面は、利用者の端末の時計で表示を判定する。サーバーは、キャンセルを押したときに自分の時刻でキャンセルできるかを改めて判定する。端末の時計が大きくずれている場合や、サインイン後に設定が変わった場合には、画面の表示とサーバーの判定が食い違うことがある。詳細を開いたまま期限を越えた場合に表示を更新するかは、まだ定めていない。</p>
+<div class="key"><p>期間は、既存の注文にも遡って働く。注文は、期間を設定する前に注文され、まだ出荷されていなくても、注文から設定日数を過ぎていればキャンセルできない。契約先は、設定を入れる前に、対象になる注文がどれだけあるかを知る必要がある。</p></div>
+<div class="key"><p>画面は、問い合わせ窓口へ案内する仕組みを今回追加しない。</p></div>
+</section>
+
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+<h2>キャンセルを押すとき</h2>
+<p>サーバーは、キャンセルを押されると注文の状態と期間を確かめ、通過した場合だけ注文をキャンセル済みにする。サーバーは、決済済みなら返金の記録も作る。返金は、後から自動で進む。キャンセルは、期間を確かめる以外は、流れも記録される内容も今までと同じである。</p>
+
+<figure class="diagram">
+  <div class="diagram-legend"><span class="existing">今までと同じ</span><span class="changed">今回変わる</span><span class="excluded">今回は対象外</span></div>
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <a class="diagram-node" href="#cancel" data-node="node-1" data-kind="process" data-state="changed"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">変更あり</span></div><b>② キャンセルを受け付ける</b><small>注文の状態、注文日、決済の有無を見る</small></a>
+          <div class="diagram-node" data-node="node-2" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>注文</b></div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-3" data-kind="decision" data-state="existing"><div class="diagram-meta"><span class="diagram-role">判定</span></div><b>出荷済みかを確かめる</b></div>
+          <div class="diagram-node" data-node="node-4" data-kind="end" data-state="existing"><div class="diagram-meta"><span class="diagram-role">終了</span></div><b>「出荷済みのため取り消せません」</b><small>今までと同じ</small></div>
+        </div>
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-5" data-kind="decision" data-state="changed"><div class="diagram-meta"><span class="diagram-role">判定</span><span class="diagram-state">変更あり</span></div><b>期間内かを確かめる</b><span class="change">+ 注文日から設定日数を過ぎていれば受け付けない</span></div>
+          <div class="diagram-node" data-node="node-6" data-kind="end" data-state="changed"><div class="diagram-meta"><span class="diagram-role">終了</span><span class="diagram-state">変更あり</span></div><b>「キャンセル期限を過ぎています」</b><small>新しい案内</small></div>
+        </div>
+        <div class="diagram-row single">
+        <div class="diagram-node" data-node="payment" data-kind="decision" data-state="existing"><div class="diagram-meta"><span class="diagram-role">判定</span></div><b>決済済みかを確かめる</b></div>
+      </div>
+      <div class="diagram-row">
+          <div class="diagram-node" data-node="node-7" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><span class="cond">決済済み</span><b>返金額を決める</b><small>支払い済みの金額から</small></div>
+          <div class="diagram-node" data-node="node-8" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><span class="cond">未決済</span><b>返金はない</b></div>
+        </div>
+        <section class="diagram-group" data-node="group-9">
+          <h4>すべて成功したときだけ、まとめて保存される（今回は変更なし）</h4>
+          <div class="diagram-layout">
+            <div class="diagram-row">
+              <div class="diagram-node" data-node="node-10" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>注文をキャンセル済みにする</b></div>
+              <div class="diagram-node" data-node="node-11" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>注文</b></div>
+            </div>
+            <div class="diagram-row">
+              <div class="diagram-node" data-node="node-12" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>返金の記録を作る</b><small>決済済みのときだけ</small></div>
+              <div class="diagram-node" data-node="node-13" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>返金の記録</b><span class="body">金額、手続き待ち</span></div>
+            </div>
+            <div class="diagram-row">
+              <div class="diagram-node" data-node="node-14" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>操作履歴を残す</b></div>
+              <div class="diagram-node" data-node="node-15" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>操作履歴</b></div>
+            </div>
+            <div class="diagram-row">
+              <div class="diagram-node" data-node="node-16" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>返金の依頼を登録する</b></div>
+              <div class="diagram-node" data-node="node-17" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>返金の依頼</b><span class="body">後で自動処理が読む</span></div>
+            </div>
+          </div>
+        </section>
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-18" data-kind="screen" data-state="existing"><div class="diagram-meta"><span class="diagram-role">画面</span></div><b>「キャンセルしました」と表示</b></div>
+          <div class="diagram-node" data-node="node-19" data-kind="end" data-state="existing"><div class="diagram-meta"><span class="diagram-role">終了</span></div><b>注文一覧</b></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-5" data-to="payment" data-kind="control" data-role="sequence">期限の確認を通過</span>
+        <span data-from="node-2" data-to="node-1" data-kind="data" data-role="reference"><span>読む</span></span>
+        <span data-from="node-3" data-to="node-4" data-kind="control" data-role="branch"><span>出荷済み</span></span>
+        <span data-from="node-1" data-to="node-3" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-5" data-to="node-6" data-kind="control" data-role="branch"><span>期間を過ぎた</span></span>
+        <span data-from="node-3" data-to="node-5" data-kind="control" data-role="sequence"><span>出荷前</span></span>
+        <span data-from="payment" data-to="node-7" data-kind="control" data-role="branch"></span>
+        <span data-from="payment" data-to="node-8" data-kind="control" data-role="branch"></span>
+        <span data-from="node-7" data-to="group-9" data-kind="control" data-role="merge"><span>まとめて記録する</span></span>
+        <span data-from="node-8" data-to="group-9" data-kind="control" data-role="merge"></span>
+        <span data-from="node-10" data-to="node-11" data-kind="data" data-role="reference"><span>更新</span></span>
+        <span data-from="node-12" data-to="node-13" data-kind="data" data-role="reference"><span>追加</span></span>
+        <span data-from="node-10" data-to="node-12" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-14" data-to="node-15" data-kind="data" data-role="reference"><span>追加</span></span>
+        <span data-from="node-12" data-to="node-14" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-16" data-to="node-17" data-kind="data" data-role="reference"><span>追加</span></span>
+        <span data-from="node-14" data-to="node-16" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-18" data-to="node-19" data-kind="call" data-role="sequence"><span>一覧へ戻る</span></span>
+        <span data-from="group-9" data-to="node-18" data-kind="control" data-role="sequence"><span>完了</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>キャンセルの後（利用者の操作はない）</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row">
+          <div class="diagram-node" data-node="node-20" data-kind="process" data-state="excluded"><div class="diagram-meta"><span class="diagram-role">処理</span><span class="diagram-state">対象外</span></div><b>返金の手続き</b><span class="body">返金の依頼を読み、決済サービスへ返金を依頼する</span></div>
+          <div class="diagram-node" data-node="node-21" data-kind="external" data-state="excluded"><div class="diagram-meta"><span class="diagram-role">外部</span><span class="diagram-state">対象外</span></div><b>決済サービス</b><span class="body">外部</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-20" data-to="node-21" data-kind="call" data-role="sequence"><span>返金を依頼</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>図3. キャンセルの流れ。要求は、出荷状態と期間の確認で拒否されると横の案内で終わる。要求は、決済済みかどうかで分かれた後、同じ保存処理へ進む</figcaption>
+</figure>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">利用者の操作</th><th class="table-description">結果</th><th class="table-label">今までとの違い</th></tr></thead>
+<tbody>
+<tr><td class="k table-description">出荷前で期間内の注文をキャンセルする</td><td class="table-description">注文がキャンセル済みになり、決済済みなら返金処理が始まる</td><td class="table-label">変わらない</td></tr>
+<tr><td class="k table-description">出荷済みの注文をキャンセルしようとする</td><td class="table-description">画面が「出荷済みのため取り消せません」と表示し、何も変わらない</td><td class="table-label">変わらない</td></tr>
+<tr><td class="k table-description">出荷前で、期間を過ぎた注文をキャンセルしようとする</td><td class="table-description">画面が「キャンセル期限を過ぎています」と表示し、何も変わらない</td><td class="table-label">新しい結果</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="cancel">② 期間を過ぎたキャンセルは受け付けない</h3>
+<p>サーバーは、記録する前に期間を確かめる。サーバーは、受け付けなかった場合は注文にも操作履歴にも何も残さない。返金は、今までと同じく、キャンセルが記録された後に自動で進む。返金は、完了までの時間も、失敗したときの扱いも、今回の変更では変わらない。</p>
+<div class="key"><p>サーバーは、利用者がキャンセルできなかったことをどこにも記録しない。このため、拒否の記録からキャンセルできなかった回数を数えることはできない。問い合わせの減少数や、キャンセルできずに困った利用者数を調べる方法は、この資料では定めていない。</p></div>
+</section>
+
+<section id="detail-3" class="detail-page-panel" aria-labelledby="detail-label-3" hidden>
+<h2>設定を変えたとき</h2>
+<p>管理者が期間を設定または変更すると、画面とサーバーでは、新しい設定が判定に反映される時点が異なる。画面は、サインインし直すまで古い期間でボタンを表示する。画面が、サインイン時に受け取った値でボタンを表示するかを決めるためである。サーバーは、変更した設定をすぐ使う。サーバーが、キャンセルを押した時点の設定で判定するためである。</p>
+
+<p>管理者が期間を変更した後は、次の設定で判定する。</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-description">利用者のサインイン状況</th><th class="table-description">画面がボタン表示の判定に使う期間</th><th class="table-description">サーバーがキャンセル受付の判定に使う期間</th></tr></thead>
+<tbody>
+<tr><td class="k table-description">サインインし直していない</td><td class="table-description">変更前</td><td class="table-description">変更後</td></tr>
+<tr><td class="k table-description">サインインし直した</td><td class="table-description">変更後</td><td class="table-description">変更後</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="key"><p>サインインし直していない利用者の画面では、出荷前で、変更前後の期間によって判定が変わる注文に次の差が生じる。</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th class="table-description">期間の変更と注文の条件</th><th class="table-description">キャンセルボタン</th><th class="table-description">サーバーの判定</th></tr>
+</thead>
+<tbody>
+<tr><td class="table-description">短縮：変更前は期間内、変更後は期間外</td><td class="table-description">表示される</td><td class="table-description">期限切れとして拒否する</td></tr>
+<tr><td class="table-description">延長：変更前は期間外、変更後は期間内</td><td class="table-description">表示されない</td><td class="table-description">キャンセルを受け付けられる</td></tr>
+</tbody>
+</table>
+</div>
+<p>利用者がサインインし直すと、画面も変更後の期間でボタンの表示を判定する。</p></div>
+</section>
+
+<section id="detail-rejected" class="detail-page-panel" aria-labelledby="detail-label-rejected" hidden>
+<!-- 書き手へ: 節は、採用しなかった案を確定した要件から分けて含む。書き手は、案がなければ節ごと省く。読み手が確定した内容と検討の経緯を取り違えないためである。 -->
+<h2>採用しなかった案</h2>
+
+<div class="options">
+  <div class="option">
+    <p class="option-label"><span>不採用</span></p>
+    <h4>すべての契約先へ14日の既定値を適用する</h4>
+    <dl>
+      <dt>採用しなかった理由</dt><dd>契約先が、設定を確認していなくても既存注文に制限が加わり、全契約先への周知と移行が必要になる</dd>
+      <dt>再検討するとき</dt><dd>全契約先へ共通の期間を適用する方針と移行計画が決まったとき</dd>
+    </dl>
+  </div>
+  <div class="option">
+    <p class="option-label"><span>今回の対象外</span></p>
+    <h4>注文詳細を開くたびに期間設定を取り直す</h4>
+    <dl>
+      <dt>採用しなかった理由</dt><dd>設定を読む仕組み全体が変わる。サーバーは最終判断で誤ったキャンセルを防げる</dd>
+      <dt>再検討するとき</dt><dd>利用者が設定変更をすぐ画面へ映すことを求めたとき</dd>
+    </dl>
+  </div>
+  <div class="option">
+    <p class="option-label"><span>今回の対象外</span></p>
+    <h4>期限切れで拒否した回数を記録する</h4>
+    <dl>
+      <dt>採用しなかった理由</dt><dd>今回の目的はキャンセル期限を設けることまでで、利用状況を計測する仕組みを含まない</dd>
+      <dt>再検討するとき</dt><dd>利用者が、問い合わせへの効果や、キャンセルできずに困った人数を評価する必要が生じたとき</dd>
+    </dl>
+  </div>
+</div>
+
+</section>
+</main>
+</div>
+
+</div>
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>

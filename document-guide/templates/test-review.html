@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注文のキャンセル期限 — 既存テストのレビュー</title>
+<link rel="stylesheet" href="common.css">
+<style>
+.review-note { font-size: 12.5px; color: var(--ink-2); }
+  .related-code { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 20px 0; }
+  .related-code > div { min-width: 0; }
+  .related-code pre { margin-bottom: 0; }
+  td code, p code { overflow-wrap: anywhere; }
+  @media (max-width: 1100px) {
+    .related-code { grid-template-columns: 1fr; gap: 16px; }
+  }
+  @container (max-width: 760px) {
+  }
+</style>
+<script src="flow.js" defer></script>
+</head>
+<body><div class="doc"><div class="detail-page-layout detail-page-layout--navigated">
+<nav class="detail-page-navigation" aria-label="目次">
+  <p class="detail-page-navigation-label">目次</p>
+  <button type="button" class="detail-page-navigation-item" aria-controls="detail-overview" aria-current="true"><span class="detail-page-navigation-number">00</span><span id="detail-label-overview">概要</span></button>
+  <button type="button" class="detail-page-navigation-item" aria-controls="detail-1" aria-current="false"><span class="detail-page-navigation-number">01</span><span id="detail-label-1">キャンセルを拒否したとき</span></button>
+  <button type="button" class="detail-page-navigation-item" aria-controls="detail-2" aria-current="false"><span class="detail-page-navigation-number">02</span><span id="detail-label-2">一覧に期限切れを表示する</span></button>
+  <button type="button" class="detail-page-navigation-item" aria-controls="detail-3" aria-current="false"><span class="detail-page-navigation-number">03</span><span id="detail-label-3">期間内のキャンセルを受け付ける</span></button>
+</nav>
+<main class="detail-page-content">
+
+<header id="detail-overview" class="detail-page-panel detail-page-overview" aria-labelledby="detail-label-overview">
+<div class="detail-page-hero">
+  <p class="eyebrow">受注管理 › 注文キャンセル › 既存テストのレビュー</p>
+  <h1>注文のキャンセル期限 — 既存テストのレビュー</h1>
+</div>
+
+<h2>レビュー観点</h2>
+<p>キャンセル期限のテストについて、呼び出すコードと検証式を確認する。実装の誤りを検出できるか、実行順や処理時間で結果が変わらないかを評価する。</p>
+<!-- 書き手へ: 観点表は、この資料で何を根拠に判断するかを先に示す。観点表は、観点と確認内容の列を保つ。書き手は、「今回の確認対象」だけを対象の差分から書く。読み手が本文の判断をどの観点に照らして読むかを決めるためである。 -->
+<div class="table-wrap"><table><thead><tr><th class="table-label">観点</th><th class="table-description">確認内容</th><th class="table-description">今回の確認対象</th></tr></thead><tbody>
+<tr id="review-assertion"><th scope="row" class="table-label">検証内容</th><td class="table-description">仕様どおりに動かないとき、テストが失敗するか</td><td class="table-description"><a href="#assertion">キャンセルを拒否したときの応答とDBの内容</a>を、テストがどう確かめているか</td></tr>
+<tr id="review-isolation"><th scope="row" class="table-label">独立性</th><td class="table-description">テストを実行する順や、ほかのテストが残したデータ・設定で結果が変わらないか</td><td class="table-description"><a href="#isolation">一覧で使うキャンセル可能日数</a>を、どのテストで設定し、いつ元に戻すか</td></tr>
+<tr id="review-stability"><th scope="row" class="table-label">安定性</th><td class="table-description">正しく実装したのに、処理時間や実行環境が違うことでテストが失敗しないか</td><td class="table-description"><a href="#stability">注文を用意してからサーバーが判定するまで</a>に、期限切れになることがないか</td></tr>
+</tbody></table></div>
+
+<!-- 書き手へ: 図は、テストごとに使う処理とデータを1行に並べる。図は、行を実行順と無関係に並べる。書き手は、図の読み方を題に書かない。読み手が行ごとに読めるためである。 -->
+<h2>対象のテストと関連するコード</h2>
+<p>この資料は、キャンセル期限を追加したときに作ったテストを扱う。</p>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <h3>キャンセルを要求し、応答とDBの内容を確かめる</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#assertion" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderCancelService.test.ts</b><small>server/test/orders/</small><span class="body">期限が切れた注文のキャンセルを要求する</span></a>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderCancelService.ts</b><small>server/src/orders/</small><span class="body">期限内ならキャンセルを受け付け、データを保存する</span></div>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#assertion-observations" data-node="node-3" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>HTTP応答・テスト用DB</b><span class="body">テストがどの値を確認しているかを調べる</span></a>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="call" data-role="sequence"><span>Controllerに<br>要求を渡す</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="data" data-role="sequence"><span>応答を返す<br>受け付けたら保存</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>設定した日数を一覧の表示に使う</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#isolation" data-node="node-4" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderList.test.ts</b><small>client/test/orders/</small><span class="body">日数の設定と、期限切れの表示を確かめる</span></a>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-5" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>SessionStore.ts</b><small>client/src/store/</small><span class="body">cancelWindowDaysを保持する</span></div>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#store-relations" data-node="node-6" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderList.tsx</b><small>client/src/features/orders/</small><span class="body">注文日時・日数・現在時刻から、期限切れかどうかを判定する</span></a>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-4" data-to="node-5" data-kind="data" data-role="sequence"><span>設定を用意</span></span>
+        <span data-from="node-5" data-to="node-6" data-kind="data" data-role="sequence"><span>日数を渡す</span></span>
+      </div>
+    </div>
+  </section>
+  <section class="diagram-scene">
+    <h3>サーバーが判定するまでに期限切れにならないかを確かめる</h3>
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#stability" data-node="node-7" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>CancelWindow.integration.test.ts</b><small>server/test/orders/</small><span class="body">期限内の注文を用意し、キャンセルを要求する</span></a>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-8" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>OrderCancelService.ts</b><span class="body">要求の処理中にnow()で現在時刻を取得する</span></div>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#clock-timeline" data-node="node-9" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>期限と判定時刻</b><span class="body">処理に時間がかかると、期限切れになることがある</span></a>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-7" data-to="node-8" data-kind="call" data-role="sequence"><span>注文を用意し<br>キャンセルを要求</span></span>
+        <span data-from="node-8" data-to="node-9" data-kind="data" data-role="sequence"><span>判定に使う</span></span>
+      </div>
+    </div>
+  </section>
+</figure>
+<p class="review-note">判断の根拠は、仕様と掲載コードである。補助関数の実装と、テストの実行結果は未確認である。</p>
+</header>
+
+<section id="detail-1" class="detail-page-panel" aria-labelledby="detail-label-1" hidden>
+<h2 id="assertion">キャンセルを拒否したときの応答とDBの内容</h2>
+<p>このテストの目的は、期限切れの要求を拒否し、注文・返金記録・監査ログ・outboxが変わらないことを確かめることである。ただし、現在の検証式が比較しているのは応答のstatusとreasonだけであり、DBの不変更は確認していない。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-description">注文</th><th class="table-description">注文日時</th><th class="table-label">キャンセル可能日数</th><th class="table-description">判定時刻</th></tr></thead><tbody>
+<tr><td class="table-description">出荷前・決済済み</td><td class="table-description">固定した現在時刻の4日前</td><td class="table-label">3日</td><td class="table-description">テストが固定する</td></tr>
+</tbody></table></div>
+
+<h3>要求を受けて動く処理と、テストで確認する値</h3>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#assertion-code" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>テストからclient.cancelを呼ぶ</b><span class="body">準備した注文のIDを渡す</span></a>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#rejection-code" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>Controller → OrderCancelService</b><span class="body">Serviceが期限を判定し、ControllerがHTTP応答を返す</span></a>
+        </div>
+        <div class="diagram-row">
+          <a class="diagram-node" href="#assertion-code" data-node="node-3" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><span class="cond">HTTP応答</span><b>status・reason</b><span class="body">現在のテストで値を比較している</span></a>
+          <a class="diagram-node" href="#saved-state" data-node="node-4" data-kind="data" data-state="issue"><div class="diagram-meta"><span class="diagram-role">データ</span><span class="diagram-state">指摘あり</span></div><span class="cond">DBの変更</span><b>注文と関連する記録</b><span class="body">現在のテストでは確認していない</span></a>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="control" data-role="sequence"><span>要求</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="control" data-role="branch"></span>
+        <span data-from="node-2" data-to="node-4" data-kind="control" data-role="branch"></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>client.cancelが本体のController・Serviceを呼び、テスト用DBを使う場合の要求と確認対象。補助関数の実装は未確認。</figcaption>
+</figure>
+
+<div id="rejection-code" class="related-code">
+  <div><p class="code-ref" id="deadline-read">server/src/orders/OrderCancelService.ts — 期限切れの例外を投げる処理（直前の保存処理の有無は未確認）</p>
+<pre><code>if (!CancelPolicy.withinWindow(
+    order.placedAt,
+    tenant.settings.cancelWindowDays,
+    now())) {
+  throw new CancelWindowExceeded(
+    order.placedAt,
+    tenant.settings.cancelWindowDays);
+}</code></pre></div>
+  <div><p class="code-ref">server/src/orders/OrderCancelController.ts — 期限切れの例外を受けて422を返す処理</p>
+<pre><code>if (error instanceof CancelWindowExceeded)
+  return res.status(422).json({
+    reason: 'cancel_window_exceeded'
+  });</code></pre></div>
+</div>
+<p>Serviceは期限切れなら例外を投げ、Controllerはその例外を422へ変換する。ただし、この抜粋だけでは、期限判定より前にDBを更新していないかは分からない。DBが変わらないことを判断するには、Service全体の保存位置と、補助関数が呼ぶ処理を確認する必要がある。</p>
+
+<h3 id="assertion-code">現在のテストで見つけられる不具合</h3>
+<p class="code-ref">server/test/orders/OrderCancelService.test.ts — 既存テスト</p>
+<pre><code>it('期限切れを拒否し、何も保存しない', async () =&gt; {
+  const order = await seedPaidOrder({ placedAt: FOUR_DAYS_AGO });
+  const response = await client.cancel(order.id);
+  expect(response.status).toBe(422);
+  expect(response.body.reason).toBe('cancel_window_exceeded');
+});</code></pre>
+<div class="table-wrap" id="assertion-observations"><table><thead><tr><th class="table-description">サーバーの動作</th><th class="table-label">現在のテスト</th><th class="table-description">理由</th></tr></thead><tbody>
+<tr><td class="table-description">DBを変更せず、期限切れを理由に422を返す</td><td class="table-label">成功する</td><td class="table-description">statusとreasonが期待値に一致する</td></tr>
+<tr><td class="table-description">期限が切れた注文のキャンセルを受け付け、200を返す</td><td class="table-label">失敗する</td><td class="table-description">statusが異なるため、誤りを検出できる</td></tr>
+<tr><td class="table-description">422を返すが、理由が期限切れではない</td><td class="table-label">失敗する</td><td class="table-description">reasonが異なるため、誤りを検出できる</td></tr>
+<tr><td class="table-description">注文をcanceledに更新した後、期限切れを理由に422を返す</td><td class="table-label">成功してしまう</td><td class="table-description">応答は一致し、テストが保存結果を比較していない</td></tr>
+</tbody></table></div>
+<p class="review-note">書き手は、表の結果を掲載した検証式から判断しており、実行して確かめていない。最後の行は、注文を更新してから拒否する不具合があった場合の例である。</p>
+
+<h3 id="saved-state">要求の前後でDBの内容を比べる</h3>
+<p>テストは、応答を確かめる処理を残し、キャンセルの要求前後でDBの内容が変わっていないことも確認する。テストは、応答が正しくても注文を更新してしまう不具合を、DBの内容の比較で見つけられる。</p>
+<p class="code-ref">server/test/orders/OrderCancelService.test.ts — 改善案</p>
+<pre><code>it('期限切れを拒否し、何も保存しない', async () =&gt; {
+  const order = await seedPaidOrder({ placedAt: FOUR_DAYS_AGO });
+  const before = await cancellationState(testDb, order.id);
+  const response = await client.cancel(order.id);
+  const after = await cancellationState(testDb, order.id);
+  expect(response.status).toBe(422);
+  expect(response.body.reason).toBe('cancel_window_exceeded');
+  expect(after).toEqual(before);
+});</code></pre>
+<p>改善案を成立させるには、<code>cancellationState</code> が対象注文の各項目と、その注文のrefunds・audit_logs・outboxをDBから読み直す必要がある。取得値をコピーし、複数行をID順に並べて比較できる形で返すことも必要である。この補助関数が実際にそう動くかは未確認である。</p>
+<p class="review-note">改善案は未適用・未実行である。補助関数を確認してから適用し、正しい実装では成功し、注文を更新してから拒否する実装では失敗することを確認する。</p>
+</section>
+
+<section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
+<h2 id="isolation">期間の設定と一覧の表示</h2>
+<p>一覧は、注文日時・キャンセル可能日数・現在時刻から、期限切れかどうかを判定する。一覧は、日数が未設定なら無期限として扱い、期限切れの案内を表示しない。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-description">画面へ渡す注文</th><th class="table-description">画面で使う現在時刻</th><th class="table-description">ストアの初期値</th></tr></thead><tbody>
+<tr><td class="table-description">expiredOrder：FIXED_NOWの4日前に受けた、出荷前の注文</td><td class="table-description">FIXED_NOW</td><td class="table-description">cancelWindowDays: null</td></tr>
+</tbody></table></div>
+
+<h3 id="store-relations">日数を設定するテストと、その日数を使う画面</h3>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#store-tests" data-node="node-1" data-kind="decision" data-state="existing"><div class="diagram-meta"><span class="diagram-role">判定</span></div><b>日数が保持されることを確かめるテスト</b><span class="body">SessionStore.replaceを呼ぶ</span></a>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#store-code" data-node="node-2" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>SessionStore</b><span class="body">テスト間で同じ状態を保持する</span></a>
+        </div>
+        <div class="diagram-row single">
+          <a class="diagram-node" href="#store-tests" data-node="node-3" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>次のテストで描画するOrderList</b><span class="body">renderOrderListに渡した注文と現在時刻も使う</span></a>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="sequence"><span>3日を設定</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="data" data-role="sequence"><span>日数を渡す</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>描画の後始末ではSessionStoreの設定を消さない場合の、テスト間の値の受け渡し。renderOrderListと後始末処理の実装は未確認。</figcaption>
+</figure>
+<p class="code-ref" id="store-code">client/src/store/SessionStore.ts — 日数を保持し、読み出す処理</p>
+<pre><code>replace(payload: SessionPayload) {
+  state.tenantId = payload.tenantId;
+  state.permissions = payload.permissions;
+  state.cancelWindowDays = payload.cancelWindowDays;
+},
+cancelWindowDays() {
+  return state.cancelWindowDays;
+},</code></pre>
+
+<p class="code-ref" id="store-tests">client/test/orders/OrderList.test.ts — 共有ストアを使う既存テスト</p>
+<pre><code>it('サインイン時に3日の設定を保持する', () =&gt; {
+  SessionStore.replace({ ...sessionPayload, cancelWindowDays: 3 });
+  expect(SessionStore.cancelWindowDays()).toBe(3);
+});
+
+it('4日前の注文に期限切れを表示する', () =&gt; {
+  const view = renderOrderList([expiredOrder], { now: FIXED_NOW });
+  expect(view.getByText('キャンセル期限を過ぎています')).toBeVisible();
+});</code></pre>
+<p>最初のテストは、設定した日数を読み直して確かめている。次のテストは、期限切れの案内が表示されることを確かめる。ただしテストは、期限切れの案内の表示に必要な3日の設定を、最初のテストでしか行っていない。</p>
+
+<h3>設定がテスト間に残る場合の実行順による違い</h3>
+<p>以下は、ストアの初期値が <code>null</code> で、描画や後始末の補助処理が設定を変更せず、テストを直列で実行する場合の予測である。補助処理の実装と実行結果は未確認である。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-description">実行する範囲</th><th class="table-label">表示の確認に使う日数</th><th class="table-description">仕様どおりの画面</th><th class="table-label">表示を確かめるテストの結果</th></tr></thead><tbody>
+<tr><td class="table-description">掲載順に両方</td><td class="table-label">3日</td><td class="table-description">期限切れの案内が表示される</td><td class="table-label">成功する</td></tr>
+<tr><td class="table-description">表示を確かめるテストだけ</td><td class="table-label">未設定</td><td class="table-description">期限切れの案内は表示されない</td><td class="table-label">失敗する</td></tr>
+<tr><td class="table-description">表示を確かめるテストを先に実行</td><td class="table-label">未設定</td><td class="table-description">期限切れの案内は表示されない</td><td class="table-label">失敗する</td></tr>
+</tbody></table></div>
+<p>この前提では、表示のテストだけを実行すると、画面の不具合がなくても3日の設定がないために失敗する。</p>
+
+<h3>表示を確かめるテストの中で日数を設定する</h3>
+<p class="code-ref">client/test/orders/OrderList.test.ts — 改善案（直列で実行するテスト群）</p>
+<pre><code>beforeEach(() =&gt; SessionStore.replace({ ...sessionPayload, cancelWindowDays: null }));
+afterEach(() =&gt; SessionStore.replace({ ...sessionPayload, cancelWindowDays: null }));
+
+it('4日前の注文に期限切れを表示する', () =&gt; {
+  SessionStore.replace({ ...sessionPayload, cancelWindowDays: 3 });
+  const view = renderOrderList([expiredOrder], { now: FIXED_NOW });
+  expect(view.getByText('キャンセル期限を過ぎています')).toBeVisible();
+});</code></pre>
+<ol>
+  <li><code>beforeEach</code> は、前のテストが残した設定を初期状態へ戻す。</li>
+  <li>テスト内の <code>replace</code> は、キャンセル可能日数を3日に設定する。</li>
+  <li><code>afterEach</code> は、後続のテストへ3日の設定を持ち越さないよう初期状態へ戻す。</li>
+</ol>
+<div class="table-wrap"><table><thead><tr><th class="table-description">テストの実行の仕方</th><th class="table-description">用意するストア</th></tr></thead><tbody>
+<tr><td class="table-description">1つずつ実行する</td><td class="table-description">共有ストアを各テストの前後で初期化する</td></tr>
+<tr><td class="table-description">同時に実行する</td><td class="table-description">テストごとに別のストアを用意する</td></tr>
+</tbody></table></div>
+<p class="review-note">改善案は未実行である。修正後は掲載順・単独・逆順のいずれでも成功することを確認する。</p>
+</section>
+
+<section id="detail-3" class="detail-page-panel" aria-labelledby="detail-label-3" hidden>
+<h2 id="stability">期間内のキャンセルを受け付ける</h2>
+<p>テストは、キャンセル可能日数が3日の契約先について、期限内ならキャンセルを受け付けることを確かめる。対象の注文は、出荷前・決済済みである。サーバーは、仕様では期限に達した時点からキャンセルを拒否する。</p>
+<p class="code-ref">server/test/orders/CancelWindow.integration.test.ts — 既存テスト</p>
+<pre><code>it('期限内の要求を受け付ける', async () =&gt; {
+  const placedAt = new Date(Date.now() - 3 * DAY_MS + 100);
+  const order = await seedPaidOrder({ placedAt });
+  const response = await client.cancel(order.id);
+  expect(response.status).toBe(200);
+});</code></pre>
+
+<h3 id="clock-timeline">準備から判定までにかかる時間</h3>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>t0：注文日時を決める</b><span>テストがDate.now()で現在時刻を取得する</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>注文を保存する</b><span>テストがawait seedPaidOrderで準備の完了を待つ</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="decision" data-state="existing"><div class="diagram-meta"><span class="diagram-role">判定</span></div><b>ts：サーバーが判定する</b><span>client.cancelの処理中に、<a href="#deadline-read">Serviceがnow()で時刻を取得する</a></span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-4" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>応答を比較する</b><span>テストがawait client.cancelで要求の完了を待ってから検証する</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-2" data-to="node-3" data-kind="control" data-role="sequence"></span>
+        <span data-from="node-3" data-to="node-4" data-kind="control" data-role="sequence"></span>
+      </div>
+    </div>
+  </section>
+  <figcaption class="timeline-caption">注文日時 + 3日 = t0 + 100ms。所要時間は、判定までがts − t0であり、DBの準備と要求処理にかかる時間を含む。</figcaption>
+</figure>
+<p>テストは、注文の保存後に要求を送り、応答後に検証するために <code>await</code> を使う。ただし、待機中にも時間は進むため、判定時には期限切れになる可能性がある。</p>
+<p>以下は、テストの <code>Date.now()</code> とサーバーの <code>now()</code> が同じ時刻を基準にし、保存した注文日時のミリ秒精度が保たれる場合の予測である。時計の設定と保存時の精度は未確認である。</p>
+<div class="table-wrap"><table><thead><tr><th class="table-label">準備開始から判定まで</th><th class="table-description">仕様上の結果</th><th class="table-description">200を期待する現在のテスト</th></tr></thead><tbody>
+<tr><td class="table-label">40ms</td><td class="table-description">期限より前なので200</td><td class="table-description">成功する</td></tr>
+<tr><td class="table-label">100ms</td><td class="table-description">期限ちょうどなので422</td><td class="table-description">正しい実装でも失敗する</td></tr>
+<tr><td class="table-label">250ms</td><td class="table-description">期限を過ぎたので422</td><td class="table-description">正しい実装でも失敗する</td></tr>
+</tbody></table></div>
+<p class="review-note">表は、所要時間ごとの予測であり、遅延を加えた実行結果ではない。</p>
+
+<h3>判定に使う時刻を固定する</h3>
+<p>テストは、Serviceが期限の判定に使う時刻を固定すれば、処理に時間がかかっても期限内として同じ結果を得られる。期限までの余裕は、増やすだけでは、処理が遅れたときに結果が変わることを防げない。</p>
+<figure class="diagram">
+  <section class="diagram-scene">
+    <div class="diagram-graph" data-subject="flow">
+      <div class="diagram-layout">
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-1" data-kind="data" data-state="existing"><div class="diagram-meta"><span class="diagram-role">データ</span></div><b>テストのfixedNow</b><span class="body">期限の判定に使う時刻を決める</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-2" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>createTestApp</b><span class="body">テストごとにアプリとDBを作る</span></div>
+        </div>
+        <div class="diagram-row single">
+          <div class="diagram-node" data-node="node-3" data-kind="process" data-state="existing"><div class="diagram-meta"><span class="diagram-role">処理</span></div><b>期限判定</b><span class="body">処理に時間がかかっても同じ時刻を使う</span></div>
+        </div>
+      </div>
+      <div class="diagram-connections" hidden="">
+        <span data-from="node-1" data-to="node-2" data-kind="data" data-role="sequence"><span>clock.now<br>として渡す</span></span>
+        <span data-from="node-2" data-to="node-3" data-kind="call" data-role="sequence"><span>Serviceの<br>nowとして使う</span></span>
+      </div>
+    </div>
+  </section>
+  <figcaption>この案は、createTestAppに渡したclock.nowを、Serviceのnow()として使うことを想定している。書き手は、補助関数の実装をまだ確認していない。</figcaption>
+</figure>
+<p class="code-ref">server/test/orders/CancelWindow.integration.test.ts — 改善案</p>
+<pre><code>it('期限内の要求を受け付ける', async () =&gt; {
+  const fixedNow = Date.parse('2026-04-04T09:59:00Z');
+  const app = await createTestApp({
+    clock: { now: () =&gt; fixedNow },
+    cancelWindowDays: 3
+  });
+  try {
+    const order = await app.seedPaidOrder({
+      placedAt: new Date('2026-04-01T10:00:00Z')
+    });
+    const response = await app.client.cancel(order.id);
+    expect(response.status).toBe(200);
+  } finally {
+    await app.close();
+  }
+});</code></pre>
+<p>テストが <code>clock.now</code> で固定するのは、期限を判定するときの時刻だけである。テストは、注文の保存が終わるまで待つ処理と、応答を待つ処理には、引き続き <code>await</code> を使う。<code>finally</code> に置いた <code>app.close()</code> は、テストが失敗したときも呼ばれる。</p>
+<p class="review-note">改善案は未適用・未実行である。次の順に確認する。</p>
+<ol><li>補助関数が、指定した時刻をServiceの判定に渡すことと、<code>app.close()</code> でアプリとDB接続を閉じることを確認する。</li><li>改善案を適用する。</li><li>処理を意図的に遅らせてもテストが成功することを確認する。</li></ol>
+</section>
+
+</main></div></div>
+<script>
+(function () {
+  var layout = document.querySelector('.detail-page-layout');
+  if (!layout) return;
+  var navigation = layout.querySelector('.detail-page-navigation');
+  var content = layout.querySelector('.detail-page-content');
+
+  function select(button, resetPosition) {
+    if (!button) return;
+    navigation.querySelectorAll('button').forEach(function (item) {
+      item.setAttribute('aria-current', String(item === button));
+    });
+    layout.querySelectorAll('.detail-page-panel').forEach(function (panel) {
+      panel.hidden = panel.id !== button.getAttribute('aria-controls');
+    });
+    if (!resetPosition) return;
+    if (matchMedia('(max-width: 760px)').matches) content.scrollIntoView({ block: 'start' });
+    else window.scrollTo({ top: 0 });
+  }
+
+  navigation.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (button) select(button, true);
+  });
+
+  function syncFragment() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); }
+    catch (_) { return; }
+    if (!id) return;
+    var target = document.getElementById(id);
+    var panel = target && target.closest ? target.closest('.detail-page-panel') : null;
+    if (!panel) return;
+    var button = Array.prototype.find.call(navigation.querySelectorAll('button'), function (item) {
+      return item.getAttribute('aria-controls') === panel.id;
+    });
+    select(button, false);
+    target.scrollIntoView({ block: 'start' });
+  }
+
+  content.addEventListener('click', function (event) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    var link = event.target.closest('a[href^="#"]');
+    // 同じリンク先ではhashchangeが起きないため、概要へ戻った後も詳細を開けるようにする。
+    if (link && link.hash === location.hash) syncFragment();
+  });
+
+  window.addEventListener('hashchange', syncFragment);
+  syncFragment();
+})();
+</script>
+</body>
+</html>
