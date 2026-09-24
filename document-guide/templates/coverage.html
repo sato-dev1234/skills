@@ -6,21 +6,34 @@
 <title>注文のキャンセル期限のテストカバレッジ</title>
 <link rel="stylesheet" href="common.css">
 <style>
-/* 書き手へ: 色は、未確認や一部未確認の状況だけを強調する。確認手段と確認状況は別の列に書き、色だけで区別しない。 */
+/* 書き手へ: 確認状況の表示では、次を守る。
+- 色は、未確認や一部未確認の状況だけを強調する。
+- 確認手段と確認状況は別の列に書き、色だけで区別しない。 */
 :root { --del-ink: #9b2c2c; }
 
 
   .key .table-wrap:last-child { margin-bottom: 0; }
   .key table { background: transparent; }
 
-  /* 書き手へ: 各ケースに確認手段、確認状況、根拠を記す。手段は自動テスト、エージェントテストなど、状況はテストの有無、期待結果の確定状況、実行結果の所在で示す。対象外の場合は理由を記す。 */
+  /* 書き手へ: 各ケースには、内容に応じて次を記す。
+
+  | 内容 | 記すこと |
+  |---|---|
+  | 確認手段 | 自動テスト、エージェントテストなど |
+  | 確認状況 | テストの有無、期待結果の確定状況、実行結果の所在 |
+  | 根拠 | 各ケースの根拠 |
+  | 対象外の場合 | 理由 | */
   .cov { display: inline-block; font-family: var(--font-heading); font-size: 11.5px; font-weight: 700; line-height: 1.4; padding: 1px 8px; border-radius: 3px; white-space: normal; }
   .cov-auto { background: var(--code-bg); color: var(--ink-2); }
   .cov-agent { background: var(--code-bg); color: var(--ink-2); }
   .cov-gap { background: var(--del-bg); color: var(--del-ink); }
   .cov-excluded { background: var(--code-bg); color: var(--ink-2); }
 
-  /* 書き手へ: セルは、列の役割を1つ持つ。セルは、幅と折り返しをこのスタイルだけで決め、列の順序や数に左右されない。条件の数が題材で変わっても、表が見え方を保つためである。 */
+  /* 書き手へ: セルの構成では、次を守る。
+  - セルは、列の役割を1つ持つ。
+  - セルの幅と折り返しはこのスタイルだけで決め、列の順序や数に左右されない。
+
+  条件の数が題材で変わっても、表が見え方を保つためである。 */
   td.diff { white-space: nowrap; }
   td.level { font-size: 13px; min-width: 8em; max-width: 14em; }
   td.text { min-width: 240px; }
@@ -53,7 +66,7 @@
 <div class="detail-page-hero">
   <p class="eyebrow">受注管理 › 注文キャンセル › テストカバレッジ</p>
   <h1>注文のキャンセル期限のテストカバレッジ</h1>
-  <p class="sub">契約先ごとのキャンセル期間について、条件と値の組み合わせごとに、期待結果・確認手段・確認状況を示す。</p>
+  <p class="sub">契約先ごとのキャンセル期間について、因子・水準と、ケースで採用した組み合わせごとの期待結果・確認手段・確認状況を示す。</p>
 </div>
 <p class="code-ref">確認対象: feature/cancel-window の最終差分（main との比較）と既存の自動テスト</p>
 
@@ -92,17 +105,21 @@
 </table>
 </div>
 
-<!-- 書き手へ: 確認手段と確認状況は各ケースの列に示す。語の定義や表の読み方を説明する独立した判定表は設けない。集計は成功件数と区別し、何を数えたかを見出しで示す。 -->
-<h3 id="factors">検証に使う条件と値</h3>
+<!-- 書き手へ: 因子・水準、ケースと集計の表示では、次を守る。
+- 因子と各水準を独立して示し、ケースで採用した水準の組み合わせを追えるようにする。全組み合わせを必須とせず、対象外と未確認の条件は理由を示す。
+- 確認手段と確認状況は各ケースの列に示す。
+- 語の定義や表の読み方を説明する独立した判定表は設けない。
+- 集計は成功件数と区別し、何を数えたかを見出しで示す。 -->
+<h3 id="factors">検証する因子・水準</h3>
 <p>決済の有無は、受付時に返金の記録を作るかどうかの確認に使う。期間の境界は、直前・同時刻・直後を区別する。</p>
 <div class="table-wrap">
 <table>
-<thead><tr><th class="table-label">条件</th><th class="table-description">値</th><th class="table-description">テストでの用意の仕方</th></tr></thead>
+<thead><tr><th class="table-label">因子</th><th class="table-description">水準</th><th class="table-description">テストでの用意の仕方</th></tr></thead>
 <tbody>
 <tr><td class="k table-label">契約先の期間設定</td><td class="table-description">未設定 ／ 0日 ／ 3日</td><td class="table-description"><code>tenant_settings.cancel_window_days</code>。サーバーは、既存の契約先を未設定のまま無期限として扱う。<code>CancelWindow.integration.test.ts</code> は 3日の契約先だけを作っている</td></tr>
 <tr><td class="k table-label">注文の状態</td><td class="table-description">出荷前 ／ 出荷済み</td><td class="table-description">サーバーは、出荷済みかどうかを期間より先に判定する</td></tr>
 <tr><td class="k table-label">決済</td><td class="table-description">決済済み ／ 未決済</td><td class="table-description">決済は、サーバーが返金の記録を作るかどうかだけに影響する</td></tr>
-<tr><td class="k table-label">注文日時</td><td class="table-description">期間内 ／ 期限の1分前 ／ 同時刻 ／ 1分後 ／ 期間を過ぎた</td><td class="table-description">注文日時を過去に書き換えた注文を作る。判定時刻を「注文日時 + 日数」の1分前、同時刻、1分後にする。テストは <code>Clock</code> を固定して現在時刻を作っている</td></tr>
+<tr><td class="k table-label">期限との関係</td><td class="table-description">該当しない（期間未設定） ／ 期限より前 ／ 期限と同時刻 ／ 期限より後</td><td class="table-description">注文日時を過去に書き換えた注文を作る。判定時刻を期限の1分前、同時刻、1分後にする。期間未設定では期限との関係が該当しない。テストは <code>Clock</code> を固定して現在時刻を作っている</td></tr>
 <tr><td class="k table-label">期間の変更</td><td class="table-description">7日 → 3日 ／ 未設定 → 3日 ／ 3日 → 未設定</td><td class="table-description">「設定変更の反映」だけで使う。変更前と変更後の値の組を1つの値にする</td></tr>
 <tr><td class="k table-label">サインインの時点</td><td class="table-description">変更前のまま ／ 変更後にし直す ／ 関係しない（要求を直接送る）</td><td class="table-description">「設定変更の反映」だけで使う。画面が持つ日数はサインインし直すまで更新されない</td></tr>
 <tr><td class="k table-label">端末の時計</td><td class="table-description">正確 ／ 期限以降へ進める ／ 期限前へ戻す</td><td class="table-description">「注文詳細の表示」と「注文一覧の表示」で使う。画面は <code>Date.now()</code> を直接呼んでいて、テストから判定に使う時刻を渡せない</td></tr>

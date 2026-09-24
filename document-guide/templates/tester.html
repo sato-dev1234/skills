@@ -24,7 +24,7 @@
 <div class="detail-page-hero">
   <p class="eyebrow">受注管理 › 注文キャンセル › 検証観点</p>
   <h1>注文のキャンセル期限の検証観点</h1>
-  <p class="sub">契約先ごとに「注文から何日以内ならキャンセルできるか」を設定できるようにし、期間を過ぎた注文はキャンセルできなくする変更について、検証する場面ごとに前提、条件の組み合わせ、期待結果、境界値、確認範囲外を示す。</p>
+  <p class="sub">契約先ごとに「注文から何日以内ならキャンセルできるか」を設定できるようにし、期間を過ぎた注文はキャンセルできなくする変更について、因子・水準と、検証する場面ごとの組み合わせ、期待結果、境界値、確認範囲外を示す。</p>
 </div>
 <p class="code-ref">検証対象: 注文詳細画面、キャンセル要求、契約先の期間設定</p>
 
@@ -51,7 +51,12 @@
 </div>
 <p>表示が、サーバーの判定の結果と食い違う場面がある。</p>
 
-<!-- 書き手へ: 図は、期間が関わる場面を行ごとに並べる。図は、場面ごとの番号を本文の見出しと揃えて持ち、行の間に順序を表す矢印を持たない。書き手は、図の読み方を本文と題に書かない。読み手が図の作りだけで読めるためである。 -->
+<!-- 書き手へ: 図は、次の形にする。
+- 期間が関わる場面を行ごとに並べる。
+- 場面ごとの番号を本文の見出しと揃える。
+- 行の間に順序を表す矢印を置かない。
+- 図の読み方を本文と題に書かない。
+読み手が図の作りだけで読めるためである。 -->
 <figure class="diagram">
   <div class="diagram-legend"><span class="existing">今までと同じ（回帰確認）</span><span class="changed">今回変わる（重点確認）</span><span class="excluded">確認範囲外</span></div>
   <section class="diagram-scene">
@@ -118,18 +123,18 @@
 </figure>
 
 <div class="key"><p>サーバーが、キャンセルできるかを最後に決める。テスターは、サーバーの判定結果と、画面がその結果をどう伝えるかを別々に確かめる。画面がボタンを表示の都合で出し分けているためである。</p></div>
-<!-- 書き手へ: 検証で変える条件は、対象の変更から決まる。値には境界値を含める。表は、条件、値、用意の仕方と注意の3列を保つ。テスターが組み合わせ表の条件をこの表だけで用意できるためである。 -->
-<h3 id="factors">検証で変える条件と値</h3>
+<!-- 書き手へ: 因子は検証対象の振る舞いや期待結果を分ける条件とし、水準には具体的な値・状態・境界を示す。表は、因子、水準、用意の仕方と注意の3列を保つ。各場面のケースには、この表から採用した水準の組み合わせを示す。全組み合わせを必須とせず、対象外と未決の条件は理由を示す。 -->
+<h3 id="factors">検証する因子・水準</h3>
 <p>テスターは、注文日時を過去に書き換えた注文を用意する。ただし、画面を開いた後に期限を越える検証では、期限を越えるまで待つ。テスターは、期間を設定した契約先と設定していない契約先の2つを用意する。テスターは、設定していない契約先がこの変更の前と同じ振る舞いになることを、回帰の確認の基準にする。</p>
 <div class="table-wrap">
 <table>
 <thead>
-<tr><th class="table-label">条件</th><th class="table-description">値</th><th class="table-description">用意の仕方と注意</th></tr></thead>
+<tr><th class="table-label">因子</th><th class="table-description">水準</th><th class="table-description">用意の仕方と注意</th></tr></thead>
 <tbody>
 <tr><td class="k table-label">契約先の期間設定</td><td class="table-description">未設定 ／ 0日 ／ 3日 ／ 7日</td><td class="table-description">設定値は <code>tenant_settings.cancel_window_days</code>。サーバーは、この変更より前から存在する契約先を未設定のまま無期限として扱う。</td></tr>
 <tr><td class="k table-label">注文の状態</td><td class="table-description">出荷前 ／ 出荷済み</td><td class="table-description">サーバーは、出荷済みかどうかを期間より先に判定する。</td></tr>
 <tr><td class="k table-label">決済</td><td class="table-description">決済済み ／ 未決済</td><td class="table-description">決済は、サーバーが返金の記録を作るかどうかだけに影響し、期間の判定には関わらない。</td></tr>
-<tr><td class="k table-label">注文日時</td><td class="table-description">期間内 ／ 境界 ／ 期間を過ぎた</td><td class="table-description">「注文日時 + 日数」が現在時刻と同じ、1分後、1分前になるように用意する。境界の期待結果は「ボタンの表示を確かめる」の境界値を見る。同時刻を再現する手段は未確認のため、実施前に開発担当へ確認する。</td></tr>
+<tr><td class="k table-label">期限との関係</td><td class="table-description">該当しない（期間未設定） ／ 期限より前 ／ 期限と同時刻 ／ 期限より後</td><td class="table-description">注文日時と設定日数から期限を求め、現在時刻が期限の1分前、同時刻、1分後になるように用意する。期間未設定では期限との関係が該当しない。境界の期待結果は「ボタンの表示を確かめる」の境界値を見る。同時刻を再現する手段は未確認のため、実施前に開発担当へ確認する。</td></tr>
 <tr><td class="k table-label">サインインの時点</td><td class="table-description">設定変更の前 ／ 変更の後にサインインし直す</td><td class="table-description">「設定変更の反映を確かめる」だけで使う。画面はサインイン時の期間を保持する。再読み込み時の更新は未確認</td></tr>
 <tr><td class="k table-label">端末の時計</td><td class="table-description">正確 ／ 大きくずらす</td><td class="table-description">「ボタンの表示を確かめる」だけで使う。画面は端末の時計で判定し、サーバーはサーバーの時刻で判定する。</td></tr>
 </tbody>

@@ -12,7 +12,15 @@
   .who--user { background: var(--warn-soft); color: var(--warn); }
   td .who { margin-right: 0; }
 
-  /* 書き手へ: 手順には実施者、操作、期待結果を示す。利用者が操作した結果を実施者へ渡す場合は、引き継ぎ欄に伝える内容を記す。各検証場面には目的、実行前の条件、入力、操作後の状態、停止・再開条件を示す。操作後の状態は期待結果として記す。共通の条件は準備にまとめ、ケース固有の条件は該当手順に置く。
+  /* 書き手へ: 記載する場所と内容は、次のとおりとする。
+
+  | 記載する場所 | 内容 |
+  |---|---|
+  | 手順 | 実施者、操作、期待結果 |
+  | 利用者が操作した結果を実施者へ渡す場合の引き継ぎ欄 | 実施者へ伝える内容 |
+  | 各検証場面 | 目的、実行前の条件、入力、操作後の状態、停止・再開条件。操作後の状態は期待結果として記す |
+  | 準備 | 共通の条件 |
+  | 該当手順 | ケース固有の条件 |
 
   | 場面 | 書き手がすること |
   |---|---|
@@ -75,7 +83,12 @@
 </div>
 <p class="code-ref">検証対象: 注文詳細画面、キャンセル要求、契約先の期間設定</p>
 
-<!-- 書き手へ: 手順作成時の確認と本検証の実施結果を分ける。冒頭には確認済みの範囲と実行前の不足を書く。ケースの実行可否は、そのケースと依存する準備の内容から判断する。実行後に観測・記入する欄の空白は、開始の妨げにしない。見本の確認済みの値は、実際の確認結果に置き換える。 -->
+<!-- 書き手へ: 手順書を作成するときは、次を守る。
+- 手順作成時の確認と本検証の実施結果を分ける。
+- 冒頭には確認済みの範囲と実行前の不足を書く。
+- ケースの実行可否は、そのケースと依存する準備の内容から判断する。
+- 実行後に観測・記入する欄の空白は、開始の妨げにしない。
+- 見本の確認済みの値は、実際の確認結果に置き換える。 -->
 <div class="key"><p><b>実行前に確認する内容が残っている。</b>契約先Aのコードは確認している。対象環境、契約先Bと対象注文、操作経路と権限は、準備と実画面の確認で確定する。期限切れの案内の文言と各検証の結果は、本検証で観測して記入する。</p></div>
 
 <p>受注管理が今回の対象である。利用者は、注文詳細画面からキャンセルできる。返金の記録は、決済済みの注文にできる。返金は、後から自動で進む。注文は、これまでは出荷前ならいつでもキャンセルできた。</p>
@@ -101,7 +114,12 @@
 </div>
 <p>表示が、サーバーの判定の結果と食い違う場面がある。</p>
 
-<!-- 書き手へ: 図は、期間が関わる場面を行ごとに並べる。図は、場面ごとの番号を本文の見出しと揃えて持ち、行の間に順序を表す矢印を持たない。書き手は、図の読み方を本文と題に書かない。読み手が図の作りだけで読めるためである。 -->
+<!-- 書き手へ: 図は、次の形にする。
+- 期間が関わる場面を行ごとに並べる。
+- 場面ごとの番号を本文の見出しと揃える。
+- 行の間に順序を表す矢印を置かない。
+- 図の読み方を本文と題に書かない。
+読み手が図の作りだけで読めるためである。 -->
 <figure class="diagram">
   <div class="diagram-legend"><span class="existing">今までと同じ（回帰確認）</span><span class="changed">今回変わる（重点確認）</span><span class="excluded">確認範囲外</span></div>
   <section class="diagram-scene">
@@ -166,6 +184,23 @@
   </section>
   <figcaption>図1. 期間が関わる場面。反映は、設定を変えたときにずれる分を「設定変更の反映を確かめる」で扱う</figcaption>
 </figure>
+
+<!-- 書き手へ: 因子は期待結果を分ける条件とし、水準には今回区別する具体的な値・状態・境界を示す。各場面の「条件と期待結果」には、採用した水準の組み合わせを示す。準備だけに必要な値は「検証の準備」に置き、全組み合わせの実施を必須にしない。 -->
+<h3 id="factors">検証する因子・水準</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th class="table-label">因子</th><th class="table-description">水準</th><th class="table-description">適用する場面と準備</th></tr></thead>
+<tbody>
+<tr><td class="table-label">契約先の期間設定</td><td class="table-description">未設定 ／ 3日 ／ 7日</td><td class="table-description">未設定の契約先Bと、準備で3日から7日に変える契約先Aを使う。</td></tr>
+<tr><td class="table-label">注文の状態</td><td class="table-description">出荷前 ／ 出荷済み</td><td class="table-description">ボタンの表示とキャンセルの結果を分けて確かめる。</td></tr>
+<tr><td class="table-label">決済</td><td class="table-description">決済済み ／ 未決済</td><td class="table-description">キャンセルを受け付けたときの返金の記録を確かめる。</td></tr>
+<tr><td class="table-label">期限との位置</td><td class="table-description">該当しない（期間未設定） ／ 画面を開く時点で期間内 ／ 画面を開く時点で期間外</td><td class="table-description">注文日時を書き換えるか、期限を越えるまで待って用意する。</td></tr>
+<tr><td class="table-label">期間の変更</td><td class="table-description">3日 → 7日</td><td class="table-description">設定変更後の表示と要求への応答を確かめる。</td></tr>
+<tr><td class="table-label">サインインの時点</td><td class="table-description">変更前のまま ／ 変更後にサインインし直す</td><td class="table-description">画面が保持する期間の違いを確かめる。</td></tr>
+</tbody>
+</table>
+</div>
+<p>未決済の注文3では、画面を開く時点は期間内、要求を送る時点は期間外として確かめる。</p>
 
 <h3 id="delegation">利用者に委ねる操作</h3>
 <p>エージェントは、<span class="who who--doer">実施者</span>として操作する。エージェントは、<span class="who who--user">利用者</span>がする操作を利用者へ依頼する。エージェントは、認証情報、外部システム、取り消せない操作を利用者に委ねる。</p>
@@ -234,7 +269,10 @@
 </div>
 
 <h3 id="execution-record">本検証の記録</h3>
-<!-- 書き手へ: 各ケースの結果列から実施記録を参照できるようにする。実行ごとに記録を増やし、以前の結果を上書きしない。事前確認はこの欄へ合格として転記しない。 -->
+<!-- 書き手へ: 本検証の記録では、次を守る。
+- 各ケースの結果列から実施記録を参照できるようにする。
+- 実行ごとに記録を増やし、以前の結果を上書きしない。
+- 事前確認はこの欄へ合格として転記しない。 -->
 <p>各ケースの「結果」列には観測内容と判定を記入し、対応する実施記録を示す。実施記録には次を残す。まだ実施していないケースは、未実施理由と再開に必要なことを書く。</p>
 <div class="table-wrap">
 <table>
@@ -362,13 +400,13 @@
 <h3 id="display">① 条件と期待結果</h3>
 <div class="table-wrap">
 <table>
-<thead><tr><th class="table-label">対象の注文</th><th class="table-label">契約先の期間</th><th class="table-label">注文の状態</th><th class="table-description">注文日時</th><th class="table-description">期待結果</th><th class="table-description">結果</th></tr></thead>
+<thead><tr><th class="table-label">対象の注文</th><th class="table-label">契約先の期間</th><th class="table-label">注文の状態</th><th class="table-description">期限との位置・注文日時</th><th class="table-description">期待結果</th><th class="table-description">結果</th></tr></thead>
 <tbody>
-<tr><td class="table-label">契約先Bの注文</td><td class="table-label">未設定</td><td class="table-label">出荷前</td><td class="table-description">1年以内の任意</td><td class="table-description">注文詳細画面がボタンを出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
-<tr><td class="table-label">未決済の注文1</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">2日前</td><td class="table-description">注文詳細画面がボタンを出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
-<tr><td class="table-label">未決済の注文2</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">4日前</td><td class="table-description">注文詳細画面がボタンを出さず、期限切れの案内を出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと、表示された案内の文言をそのまま書く</span></td></tr>
-<tr><td class="table-label">出荷済みの注文</td><td class="table-label">3日</td><td class="table-label">出荷済み</td><td class="table-description">4日前</td><td class="table-description">注文詳細画面がボタンを出さず、期限切れの案内を出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを観測したとおりに書く</span></td></tr>
-<tr><td class="table-label">未決済の注文3</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">準備で書き換えた日時。期限は基準時刻の10分後</td><td class="table-description">注文詳細画面がボタンを出す。期限を越えた後に別のタブで開くと、ボタンを出さず案内を出す</td><td class="result table-description"><span class="blank">期限の前と後で注文詳細を開き、それぞれボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
+<tr><td class="table-label">契約先Bの注文</td><td class="table-label">未設定</td><td class="table-label">出荷前</td><td class="table-description">該当しない（期間未設定）。注文日時は1年以内の任意</td><td class="table-description">注文詳細画面がボタンを出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
+<tr><td class="table-label">未決済の注文1</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">期間内（2日前）</td><td class="table-description">注文詳細画面がボタンを出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
+<tr><td class="table-label">未決済の注文2</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">期間外（4日前）</td><td class="table-description">注文詳細画面がボタンを出さず、期限切れの案内を出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと、表示された案内の文言をそのまま書く</span></td></tr>
+<tr><td class="table-label">出荷済みの注文</td><td class="table-label">3日</td><td class="table-label">出荷済み</td><td class="table-description">期間外（4日前）</td><td class="table-description">注文詳細画面がボタンを出さず、期限切れの案内を出す</td><td class="result table-description"><span class="blank">注文詳細を開き、ボタンを出したかどうかと案内を出したかどうかを観測したとおりに書く</span></td></tr>
+<tr><td class="table-label">未決済の注文3</td><td class="table-label">3日</td><td class="table-label">出荷前</td><td class="table-description">画面を開く時点は期間内、要求を送る時点は期間外。期限は基準時刻の10分後</td><td class="table-description">注文詳細画面がボタンを出す。期限を越えた後に別のタブで開くと、ボタンを出さず案内を出す</td><td class="result table-description"><span class="blank">期限の前と後で注文詳細を開き、それぞれボタンを出したかどうかと案内を出したかどうかを書く</span></td></tr>
 </tbody>
 </table>
 </div>
@@ -401,7 +439,7 @@
 </ol>
 
 <h3 id="display-notes">注意</h3>
-<div class="caution"><p>注文は、出荷済みかつ期間を過ぎた場合に期限切れの案内が出るかどうかが、今回の変更の内容から決まらない。エージェントは、ボタンが出ないことまでを期待結果とする。エージェントは、案内が出たかどうかを観測したとおりに書き、開発担当へ確認する。</p></div>
+<div class="caution"><p>出荷済みかつ期間を過ぎた注文では、ボタンを表示せず、期限切れの案内を表示する。案内の正式な文言は未確定のため、表示された文言を記録する。</p></div>
 </section>
 
 <section id="detail-2" class="detail-page-panel" aria-labelledby="detail-label-2" hidden>
@@ -417,7 +455,7 @@
 <tbody>
 <tr><td class="table-label">未決済の注文1</td><td class="table-description">期間内、出荷前、未決済</td><td class="table-description"><code>200</code></td><td class="table-description">画面が「キャンセルしました」と表示し、一覧へ戻る</td><td class="table-description">注文がキャンセル済み、操作履歴、返金の依頼。返金の記録は作られない</td><td class="result table-description"><span class="blank">画面の表示と注文の状態に加え、操作前後で操作履歴と返金の依頼の件数がどう変わったかを書く</span></td></tr>
 <tr><td class="table-label">決済済みの注文</td><td class="table-description">期間内、出荷前、決済済み</td><td class="table-description"><code>200</code></td><td class="table-description">同上</td><td class="table-description">上に加えて、返金の記録（金額、手続き待ち）</td><td class="result table-description"><span class="blank">上と同じ項目に加えて、返金の記録の金額と状態を書く</span></td></tr>
-<tr><td class="table-label">契約先Bの注文</td><td class="table-description">未設定の契約先、出荷前</td><td class="table-description"><code>200</code></td><td class="table-description">同上</td><td class="table-description">決済の有無に応じて上と同じ</td><td class="result table-description"><span class="blank">画面の表示と注文の状態に加え、操作前後で記録の件数がどう変わったかを書く</span></td></tr>
+<tr><td class="table-label">契約先Bの注文</td><td class="table-description">期間未設定の契約先の出荷前の注文。決済状態：<span class="blank">準備で確認した「決済済み」または「未決済」を記入する</span></td><td class="table-description"><code>200</code></td><td class="table-description">同上</td><td class="table-description">注文の更新、操作履歴、返金の依頼。決済済みなら返金の記録も追加し、未決済なら追加しない</td><td class="result table-description"><span class="blank">画面の表示と注文の状態に加え、操作前後で記録の件数がどう変わったかを書く</span></td></tr>
 <tr><td class="table-label">未決済の注文3</td><td class="table-description">利用者が、ボタンが出ている画面で期限を越えてから押す</td><td class="table-description"><code>422</code>、reason は <code>cancel_window_exceeded</code></td><td class="undetermined table-description">定めない</td><td class="table-description">なし。注文の内容は変わらず、返金の記録、操作履歴、返金の依頼はいずれも追加されない</td><td class="result table-description"><span class="blank">画面に表示された内容をそのまま書き、注文詳細の状態と記録の件数が変わっていないことを書く</span></td></tr>
 <tr><td class="table-label">出荷済みの注文</td><td class="table-description">期間を過ぎた、出荷済み</td><td class="table-description"><code>409</code></td><td class="table-description">「出荷済みのため取り消せません」</td><td class="table-description">なし</td><td class="result table-description"><span class="blank">利用者から伝えられた応答と、注文詳細の状態が変わっていないことを書く</span></td></tr>
 </tbody>
