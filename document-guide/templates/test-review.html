@@ -37,14 +37,22 @@
 
 <h2>レビュー観点</h2>
 <p>キャンセル期限のテストについて、呼び出すコードと検証式を確認する。実装の誤りを検出できるか、実行順や処理時間で結果が変わらないかを評価する。</p>
-<!-- 書き手へ: 観点表は、この資料で何を根拠に判断するかを先に示す。観点表は、観点と確認内容の列を保つ。書き手は、「今回の確認対象」だけを対象の差分から書く。読み手が本文の判断をどの観点に照らして読むかを決めるためである。 -->
+<!-- 書き手へ: 観点表では、次を守る。
+- この資料で何を根拠に判断するかを先に示す。
+- 観点と確認内容の列を保つ。
+- 「今回の確認対象」だけを対象の差分から書く。
+読み手が本文の判断をどの観点に照らして読むかを決めるためである。 -->
 <div class="table-wrap"><table><thead><tr><th class="table-label">観点</th><th class="table-description">確認内容</th><th class="table-description">今回の確認対象</th></tr></thead><tbody>
 <tr id="review-assertion"><th scope="row" class="table-label">検証内容</th><td class="table-description">仕様どおりに動かないとき、テストが失敗するか</td><td class="table-description"><a href="#assertion">キャンセルを拒否したときの応答とDBの内容</a>を、テストがどう確かめているか</td></tr>
 <tr id="review-isolation"><th scope="row" class="table-label">独立性</th><td class="table-description">テストを実行する順や、ほかのテストが残したデータ・設定で結果が変わらないか</td><td class="table-description"><a href="#isolation">一覧で使うキャンセル可能日数</a>を、どのテストで設定し、いつ元に戻すか</td></tr>
 <tr id="review-stability"><th scope="row" class="table-label">安定性</th><td class="table-description">正しく実装したのに、処理時間や実行環境が違うことでテストが失敗しないか</td><td class="table-description"><a href="#stability">注文を用意してからサーバーが判定するまで</a>に、期限切れになることがないか</td></tr>
 </tbody></table></div>
 
-<!-- 書き手へ: 図は、テストごとに使う処理とデータを1行に並べる。図は、行を実行順と無関係に並べる。書き手は、図の読み方を題に書かない。読み手が行ごとに読めるためである。 -->
+<!-- 書き手へ: 図は、次の形にする。
+- テストごとに使う処理とデータを1行に並べる。
+- 行は実行順と無関係に並べる。
+- 図の読み方を題に書かない。
+読み手が行ごとに読めるためである。 -->
 <h2>対象のテストと関連するコード</h2>
 <p>この資料は、キャンセル期限を追加したときに作ったテストを扱う。</p>
 <figure class="diagram">
